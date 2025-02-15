@@ -1,0 +1,16 @@
+from gymnasium.envs.registration import register
+
+register(
+    id="gymnasium_env/GridWorld-v0",
+    entry_point="gymnasium_env.envs:GridWorldEnv",
+)
+
+register(
+    id="gymnasium_env/CenturyGolem-v0",
+    entry_point="gymnasium_env.envs:CenturyGolemEnv",
+)
+
+register(
+    id="gymnasium_env/CenturyGolem-v1",
+    entry_point="gymnasium_env.envs:CenturyGolemEnvV1",
+)
