@@ -212,29 +212,21 @@ class CenturyGolemEnvV2(gym.Env):
             self.render()
         
         return observation, reward, terminated, False, info
+
+    def _card_status(self, card):
+        """Return the status of a merchant card as a string."""
+        if card.owned:
+            return "playable" if card.available else "unplayable"
+        return "not owned"
     
     def render(self):
-        if self.render_mode == "text":
-            card1_status = "playable" if self.merchant_card1.available else "unplayable"
-            if self.merchant_card2.owned:
-                card2_status = "playable" if self.merchant_card2.available else "unplayable"
-            else:
-                card2_status = "not owned"
-            if self.merchant_card3.owned:
-                card3_status = "playable" if self.merchant_card3.available else "unplayable"
-            else:
-                card3_status = "not owned"
-            if self.merchant_card4.owned:
-                card4_status = "playable" if self.merchant_card4.available else "unplayable"
-            else:
-                card4_status = "not owned"
-            
+        if self.render_mode == "text":            
             print(f"Yellow Crystals: {self.yellow_crystals} / {self.winning_crystals}")
             print(f"Green Crystals: {self.green_crystals}")
-            print(f"Merchant Card 1 - {card1_status}")
-            print(f"Merchant Card 2 - {card2_status}")
-            print(f"Merchant Card 3 - {card3_status}")
-            print(f"Merchant Card 4 - {card4_status}")  
+            print(f"Merchant Card 1 - {self._card_status(self.merchant_card1)}")
+            print(f"Merchant Card 2 - {self._card_status(self.merchant_card2)}")
+            print(f"Merchant Card 3 - {self._card_status(self.merchant_card3)}")
+            print(f"Merchant Card 4 - {self._card_status(self.merchant_card4)}")
             print("")           
     
     def close(self):
