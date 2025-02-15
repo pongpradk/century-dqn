@@ -12,5 +12,3 @@ except KeyboardInterrupt:
 finally:
     print("Training finished")
     print(index)
-    
-# hello test 1

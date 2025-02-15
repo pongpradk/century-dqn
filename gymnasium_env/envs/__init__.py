@@ -1,3 +1,4 @@
 from gymnasium_env.envs.grid_world import GridWorldEnv
 from gymnasium_env.envs.century_golem import CenturyGolemEnv
 from gymnasium_env.envs.century_golem_v1 import CenturyGolemEnvV1
+from gymnasium_env.envs.century_golem_v2 import CenturyGolemEnvV2
