@@ -1,7 +1,7 @@
 import gymnasium
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
-from gymnasium_env.envs.century_golem_v1 import Actions
+from gymnasium_env.envs.century_golem_v2 import Actions
 import sys
 sys.path.append("/Users/pongpradk/Documents/Codes/century/gymnasium_env/envs/century_golem_v2.py")
 env = gymnasium.make('gymnasium_env/CenturyGolem-v2', render_mode='text')
@@ -15,9 +15,8 @@ def random(n_timesteps=10):
     for _ in range(n_timesteps):
         # Pick random action
         action = env.action_space.sample()
-        print("Action:", Actions(int(action)).name)
+        print("ACTION -", Actions(int(action)).name)
         state, reward, terminal, _, __ = env.step(action)
-        print("")
         
         if terminal:
             break
