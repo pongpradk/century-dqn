@@ -12,6 +12,14 @@ class MerchantCard:
         self.owned = owned
         self.available = available
 
+class GolemCard:
+    def __init__(self, name, cost_yellow, cost_green, points, owned=False):
+        self.name = name
+        self.cost_yellow = cost_yellow  # Cost in yellow crystals to acquire
+        self.cost_green = cost_green    # Cost in green crystals to acquire
+        self.points = points            # Points associated with this card
+        self.owned = owned
+        
 class Actions(Enum):
     rest = 0
     play_merchant_card1 = 1
@@ -21,6 +29,8 @@ class Actions(Enum):
     play_merchant_card3 = 5
     acquire_merchant_card4 = 6
     play_merchant_card4 = 7
+    acquire_golem_card1 = 8  # New action: acquire golem card 1
+    acquire_golem_card2 = 9  # Action to acquire golem card 2
 
 class CenturyGolemEnvV2(gym.Env):
     metadata = {"render_modes": ["text"], "render_fps": 4}
@@ -37,38 +47,40 @@ class CenturyGolemEnvV2(gym.Env):
             "merchant_card3_available": spaces.Discrete(2),
             "merchant_card4_owned": spaces.Discrete(2),
             "merchant_card4_available": spaces.Discrete(2),
+            "golem_card": spaces.Discrete(3),  # 0: none, 1: golem card 1, 2: golem card 2
         })
         
         # Action space:
         # 0: rest, 1: play merchant card 1, 2: acquire merchant card 2, 3: play merchant card 2,
         # 4: acquire merchant card 3, 5: play merchant card 3, 6: acquire merchant card 4, 7: play merchant card 4
-        self.action_space = spaces.Discrete(8)
+        self.action_space = spaces.Discrete(10)
         
         # Initialize player state
         self.yellow_crystals = 0
         self.green_crystals = 0
         
-        # Merchant Card 1 is always owned and available at the start.
-        # Its effect adds 2 yellow crystals (and 0 green).
+        # Initialize Merchant Cards:
         self.merchant_card1 = MerchantCard("merchant card 1", effect_yellow=2, effect_green=0, owned=True, available=True)
-        
-        # Merchant Card 2 is not owned initially.
-        # Its effect adds 3 yellow crystals (and 0 green).
         self.merchant_card2 = MerchantCard("merchant card 2", effect_yellow=3, effect_green=0, owned=False, available=False)
-        
-        # New Merchant Card 3 is not owned initially.
-        # Its effect: +2 yellow crystals and +1 green crystal.
         self.merchant_card3 = MerchantCard("merchant card 3", effect_yellow=2, effect_green=1, owned=False, available=False)
-        
-        # New Merchant Card 4 is not owned initially.
-        # Its effect: +0 yellow crystals and +2 green crystals.
         self.merchant_card4 = MerchantCard("merchant card 4", effect_yellow=0, effect_green=2, owned=False, available=False)
+        
+        # Initialize Golem Cards:
+        # Golem Card 1: costs 2 yellow and 3 green, worth 10 points.
+        self.golem_card1 = GolemCard("golem card 1", cost_yellow=2, cost_green=3, points=10, owned=False)
+        # Golem Card 2: costs 0 yellow and 4 green, worth 15 points.
+        self.golem_card2 = GolemCard("golem card 2", cost_yellow=0, cost_green=4, points=15, owned=False)
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
-
-        # Winning condition: Collect 10 crystals.
-        self.winning_crystals = 10
+        
+    def _get_golem_state(self):
+        if self.golem_card1.owned:
+            return 1
+        elif self.golem_card2.owned:
+            return 2
+        else:
+            return 0
     
     def _get_obs(self):
         return {
@@ -81,6 +93,7 @@ class CenturyGolemEnvV2(gym.Env):
             "merchant_card3_available": int(self.merchant_card3.available),
             "merchant_card4_owned": int(self.merchant_card4.owned),
             "merchant_card4_available": int(self.merchant_card4.available),
+            "golem_card": np.array([self._get_golem_state()], dtype=np.int32),
         }
     
     def _get_info(self):
@@ -94,6 +107,7 @@ class CenturyGolemEnvV2(gym.Env):
             "merchant_card3_available": self.merchant_card3.available,
             "merchant_card4_owned": self.merchant_card4.owned,
             "merchant_card4_available": self.merchant_card4.available,
+            "golem_card": self._get_golem_state(),
         }
     
     def reset(self, seed=None, options=None):
@@ -110,6 +124,10 @@ class CenturyGolemEnvV2(gym.Env):
         self.merchant_card3.available = False
         self.merchant_card4.owned = False
         self.merchant_card4.available = False
+        
+        # Reset Golem Card: not owned
+        self.golem_card1.owned = False
+        self.golem_card2.owned = False
         
         observation = self._get_obs()
         info = self._get_info()
@@ -199,9 +217,30 @@ class CenturyGolemEnvV2(gym.Env):
             if self.merchant_card4.owned:
                 self.merchant_card4.available = True
             reward += 0.3
+        
+        elif action == Actions.acquire_golem_card1.value:
+            if (self.yellow_crystals >= self.golem_card1.cost_yellow and 
+                self.green_crystals >= self.golem_card1.cost_green and 
+                not self.golem_card1.owned):
+                self.yellow_crystals -= self.golem_card1.cost_yellow
+                self.green_crystals -= self.golem_card1.cost_green
+                self.golem_card1.owned = True
+                reward += 5.0
+            else:
+                reward -= 1.0
+                
+        elif action == Actions.acquire_golem_card2.value:
+            if (self.green_crystals >= self.golem_card2.cost_green and 
+                not self.golem_card2.owned):
+                # Note: Golem card 2 costs only green crystals.
+                self.green_crystals -= self.golem_card2.cost_green
+                self.golem_card2.owned = True
+                reward += 5.0
+            else:
+                reward -= 1.0
 
-        # Check winning condition (based on yellow crystals).
-        if self.yellow_crystals >= self.winning_crystals:
+        # Check winning condition
+        if self._get_golem_state() != 0:
             terminated = True
             reward = 10.0  # Terminal reward
         
@@ -221,12 +260,20 @@ class CenturyGolemEnvV2(gym.Env):
     
     def render(self):
         if self.render_mode == "text":            
-            print(f"Yellow Crystals: {self.yellow_crystals} / {self.winning_crystals}")
-            print(f"Green Crystals: {self.green_crystals}")
-            print(f"Merchant Card 1 - {self._card_status(self.merchant_card1)}")
-            print(f"Merchant Card 2 - {self._card_status(self.merchant_card2)}")
-            print(f"Merchant Card 3 - {self._card_status(self.merchant_card3)}")
-            print(f"Merchant Card 4 - {self._card_status(self.merchant_card4)}")
+            print(f"Y: {self.yellow_crystals}")
+            print(f"G: {self.green_crystals}")
+            print(f"M1: {self._card_status(self.merchant_card1)}")
+            print(f"M2: {self._card_status(self.merchant_card2)}")
+            print(f"M3: {self._card_status(self.merchant_card3)}")
+            print(f"M4: {self._card_status(self.merchant_card4)}")
+            golem_state = self._get_golem_state()
+            if golem_state == 0:
+                golem_status = 0
+            elif golem_state == 1:
+                golem_status = "G1"
+            elif golem_state == 2:
+                golem_status = "G2"
+            print(f"GC: {golem_status}")
             print("")           
     
     def close(self):
