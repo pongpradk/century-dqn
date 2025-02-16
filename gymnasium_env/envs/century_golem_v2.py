@@ -37,18 +37,7 @@ class CenturyGolemEnvV2(gym.Env):
     
     def __init__(self, render_mode=None):
         # Observation space now includes crystals and statuses for all cards.
-        self.observation_space = spaces.Dict({
-            "yellow_crystals": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
-            "green_crystals": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
-            "merchant_card1_available": spaces.Discrete(2),  # 0: unavailable, 1: available
-            "merchant_card2_owned": spaces.Discrete(2),        # 0: not owned, 1: owned
-            "merchant_card2_available": spaces.Discrete(2),    # 0: unavailable, 1: available
-            "merchant_card3_owned": spaces.Discrete(2),
-            "merchant_card3_available": spaces.Discrete(2),
-            "merchant_card4_owned": spaces.Discrete(2),
-            "merchant_card4_available": spaces.Discrete(2),
-            "golem_card": spaces.Discrete(3),  # 0: none, 1: golem card 1, 2: golem card 2
-        })
+        self.observation_space = spaces.Box(low=0, high=20, shape=(10,), dtype=np.int32)
         
         # Action space:
         # 0: rest, 1: play merchant card 1, 2: acquire merchant card 2, 3: play merchant card 2,
@@ -83,18 +72,21 @@ class CenturyGolemEnvV2(gym.Env):
             return 0
     
     def _get_obs(self):
-        return {
-            "yellow_crystals": np.array([self.yellow_crystals], dtype=np.int32),
-            "green_crystals": np.array([self.green_crystals], dtype=np.int32),
-            "merchant_card1_available": int(self.merchant_card1.available),
-            "merchant_card2_owned": int(self.merchant_card2.owned),
-            "merchant_card2_available": int(self.merchant_card2.available),
-            "merchant_card3_owned": int(self.merchant_card3.owned),
-            "merchant_card3_available": int(self.merchant_card3.available),
-            "merchant_card4_owned": int(self.merchant_card4.owned),
-            "merchant_card4_available": int(self.merchant_card4.available),
-            "golem_card": np.array([self._get_golem_state()], dtype=np.int32),
-        }
+    # Order: yellow_crystals, green_crystals, merchant_card1_available,
+    # merchant_card2_owned, merchant_card2_available, merchant_card3_owned,
+    # merchant_card3_available, merchant_card4_owned, merchant_card4_available, golem_card state
+        return np.array([
+            self.yellow_crystals,
+            self.green_crystals,
+            int(self.merchant_card1.available),
+            int(self.merchant_card2.owned),
+            int(self.merchant_card2.available),
+            int(self.merchant_card3.owned),
+            int(self.merchant_card3.available),
+            int(self.merchant_card4.owned),
+            int(self.merchant_card4.available),
+            self._get_golem_state()
+        ], dtype=np.int32)
     
     def _get_info(self):
         return {
