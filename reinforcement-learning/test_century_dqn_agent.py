@@ -21,7 +21,7 @@ def select_trained_agent_action(state, trained_model):
 
 def plot_epsilon_values():
     """Plots the different values for Epsilon during the training"""
-    with open('century_epsilon_values.txt', 'r') as f:
+    with open('epsilon_valuesV2.txt', 'r') as f: # modify
         file = f.read()
         epsilon_values = json.loads(file)
 
@@ -32,7 +32,7 @@ def plot_epsilon_values():
 def plot_rewards(calculate_mean=1):
     """Plots the rewards obtained during the training. The total number of episodes must be
     a multiple of 'calculate_mean' parameter"""
-    with open('century_rewards.txt', 'r') as f:
+    with open('rewardsV2.txt', 'r') as f: # modify
         file = f.read()
         rewards = json.loads(file)
 
@@ -52,12 +52,12 @@ def plot_rewards(calculate_mean=1):
 
 if __name__ == '__main__':
 
-    env = gym.make('gymnasium_env/CenturyGolem-v1', render_mode='text')
+    env = gym.make('gymnasium_env/CenturyGolem-v2', render_mode='text') # modify
     env = FlattenObservation(env)
     state, _ = env.reset()
     state_size = env.observation_space.shape[0]
     terminal = False
-    trained_agent = load_pretrained_model('centuryV1_trained_agent.h5')
+    trained_agent = load_pretrained_model('trained_agentV2.h5') # modify
 
     total_reward = 0
     max_timesteps = 50

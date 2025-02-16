@@ -28,6 +28,7 @@ def best_strategy(action_sequence):
     for a in action_sequence:
         print("ACTION -", Actions(int(a)).name)
         state, reward, terminal, _, __ = env.step(a)
+        # print(state)
         tot_reward += reward
 
         if terminal:
@@ -36,5 +37,6 @@ def best_strategy(action_sequence):
     print(tot_reward)
     env.close()
 
-best_strategy([2,6,1,3,7,0,7,8])
+# best_strategy([4, 6, 5, 7, 8])
+best_strategy([6, 7, 0, 7, 9])
 # random()

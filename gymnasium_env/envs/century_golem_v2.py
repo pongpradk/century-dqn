@@ -36,8 +36,19 @@ class CenturyGolemEnvV2(gym.Env):
     metadata = {"render_modes": ["text"], "render_fps": 4}
     
     def __init__(self, render_mode=None):
-        # Observation space now includes crystals and statuses for all cards.
-        self.observation_space = spaces.Box(low=0, high=20, shape=(10,), dtype=np.int32)
+        self.observation_space = spaces.Dict({
+            "yellow_crystals": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
+            "green_crystals": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
+            "merchant_card1_available": spaces.Discrete(2),
+            "merchant_card2_owned": spaces.Discrete(2),
+            "merchant_card2_available": spaces.Discrete(2),
+            "merchant_card3_owned": spaces.Discrete(2),
+            "merchant_card3_available": spaces.Discrete(2),
+            "merchant_card4_owned": spaces.Discrete(2),
+            "merchant_card4_available": spaces.Discrete(2),
+            "golem_cards_available": spaces.MultiBinary(2),   # For each golem card: 1 if available (i.e. not owned), 0 if acquired.
+            "golem_cards_owned": spaces.MultiBinary(2)        # For each golem card: 1 if owned, 0 otherwise.
+        })
         
         # Action space:
         # 0: rest, 1: play merchant card 1, 2: acquire merchant card 2, 3: play merchant card 2,
@@ -72,21 +83,31 @@ class CenturyGolemEnvV2(gym.Env):
             return 0
     
     def _get_obs(self):
-    # Order: yellow_crystals, green_crystals, merchant_card1_available,
-    # merchant_card2_owned, merchant_card2_available, merchant_card3_owned,
-    # merchant_card3_available, merchant_card4_owned, merchant_card4_available, golem_card state
-        return np.array([
-            self.yellow_crystals,
-            self.green_crystals,
-            int(self.merchant_card1.available),
-            int(self.merchant_card2.owned),
-            int(self.merchant_card2.available),
-            int(self.merchant_card3.owned),
-            int(self.merchant_card3.available),
-            int(self.merchant_card4.owned),
-            int(self.merchant_card4.available),
-            self._get_golem_state()
+        # Available golem cards: 1 if not owned, 0 if owned.
+        golem_available = np.array([
+            1 if not self.golem_card1.owned else 0,
+            1 if not self.golem_card2.owned else 0,
         ], dtype=np.int32)
+        
+        # Owned golem cards: 1 if owned, 0 if not.
+        golem_owned = np.array([
+            1 if self.golem_card1.owned else 0,
+            1 if self.golem_card2.owned else 0,
+        ], dtype=np.int32)
+        
+        return {
+            "yellow_crystals": np.array([self.yellow_crystals], dtype=np.int32),
+            "green_crystals": np.array([self.green_crystals], dtype=np.int32),
+            "merchant_card1_available": int(self.merchant_card1.available),
+            "merchant_card2_owned": int(self.merchant_card2.owned),
+            "merchant_card2_available": int(self.merchant_card2.available),
+            "merchant_card3_owned": int(self.merchant_card3.owned),
+            "merchant_card3_available": int(self.merchant_card3.available),
+            "merchant_card4_owned": int(self.merchant_card4.owned),
+            "merchant_card4_available": int(self.merchant_card4.available),
+            "golem_cards_available": golem_available,
+            "golem_cards_owned": golem_owned
+        }
     
     def _get_info(self):
         return {
@@ -99,7 +120,14 @@ class CenturyGolemEnvV2(gym.Env):
             "merchant_card3_available": self.merchant_card3.available,
             "merchant_card4_owned": self.merchant_card4.owned,
             "merchant_card4_available": self.merchant_card4.available,
-            "golem_card": self._get_golem_state(),
+            "golem_cards_available": np.array([
+                1 if not self.golem_card1.owned else 0,
+                1 if not self.golem_card2.owned else 0,
+            ], dtype=np.int32),
+            "golem_cards_owned": np.array([
+                1 if self.golem_card1.owned else 0,
+                1 if self.golem_card2.owned else 0,
+            ], dtype=np.int32)
         }
     
     def reset(self, seed=None, options=None):
@@ -258,15 +286,26 @@ class CenturyGolemEnvV2(gym.Env):
             print(f"M2: {self._card_status(self.merchant_card2)}")
             print(f"M3: {self._card_status(self.merchant_card3)}")
             print(f"M4: {self._card_status(self.merchant_card4)}")
-            golem_state = self._get_golem_state()
-            if golem_state == 0:
-                golem_status = 0
-            elif golem_state == 1:
-                golem_status = "G1"
-            elif golem_state == 2:
-                golem_status = "G2"
-            print(f"GC: {golem_status}")
-            print("")           
+            
+            # Compute available golem cards in the market (i.e. not owned)
+            golem_available = []
+            if not self.golem_card1.owned:
+                golem_available.append("1")
+            if not self.golem_card2.owned:
+                golem_available.append("2")
+            gm_str = ", ".join(golem_available) if golem_available else "None"
+            
+            # Determine which golem card is owned, if any
+            if self.golem_card1.owned:
+                go_owned = "1"
+            elif self.golem_card2.owned:
+                go_owned = "2"
+            else:
+                go_owned = "None"
+            
+            print(f"GM: {gm_str}")
+            print(f"GO: {go_owned}")
+            print("")      
     
     def close(self):
         print("Closing the Century Golem environment...")

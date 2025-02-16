@@ -5,7 +5,7 @@ from collections import deque
 
 import gymnasium as gym
 import gymnasium_env
-from gymnasium.wrappers import FlattenObservation
+# from gymnasium.wrappers import FlattenObservation
 import numpy as np
 from keras.layers import Dense
 from keras.models import Sequential
@@ -101,9 +101,8 @@ class DQNAgent:
 if __name__ == '__main__':
 
     # Initialize CenturyGolem environment
-    env = gym.make('gymnasium_env/CenturyGolem-v1') # modify
-    # Wrap it so that the observation is a flat NumPy array
-    env = FlattenObservation(env)
+    env = gym.make('gymnasium_env/CenturyGolem-v2') # modify
+    # env = FlattenObservation(env)
     state, _ = env.reset() # consider remove this as we reset it in the loop
 
     # Define state and action size
@@ -111,7 +110,7 @@ if __name__ == '__main__':
     action_size = env.action_space.n
 
     # Define number of episodes, timesteps per episode and batch size
-    num_episodes = 1500
+    num_episodes = 2500
     num_timesteps = 50
     batch_size = 64
     dqn_agent = DQNAgent(state_size, action_size)
@@ -163,25 +162,25 @@ if __name__ == '__main__':
             elapsed = time.time() - start
             print(f'Time elapsed during EPISODE {ep+1}: {elapsed} seconds = {round(elapsed/60, 3)} minutes')
 
-            # If the agent got a reward >16.2 in each of the last 10 episodes, the training is terminated
-            if sum(rewards[-10:]) > 162:
-                print('Training stopped because agent has performed a perfect episode in the last 10 episodes')
-                break
+            # If the agent got a reward >14.2 in each of the last 10 episodes, the training is terminated
+            # if sum(rewards[-10:]) > 142: # modify
+            #     print('Training stopped because agent has performed a perfect episode in the last 10 episodes')
+            #     break
     
     except KeyboardInterrupt:
         print("\nTraining interrupted manually by user.")
     finally:
         # Save rewards on 'rewards.txt' file
-        with open('centuryV1_rewards.txt', 'w') as f: # modify
+        with open('rewardsV2.txt', 'w') as f: # modify
             f.write(json.dumps(rewards))
-        print("Rewards of the training saved in 'centuryV1_rewards.txt'") # modify
+        print("Rewards of the training saved in 'rewardsV2.txt'") # modify
 
         # Save epsilon values
-        with open('centuryV1_epsilon_values.txt', 'w') as f: # modify
+        with open('epsilon_valuesV2.txt', 'w') as f: # modify
             f.write(json.dumps(epsilon_values))
-        print("Epsilon values of the training saved in 'centuryV1_epsilon_values.txt'") # modify
+        print("Epsilon values of the training saved in 'epsilon_valuesV2.txt'") # modify
 
         # Save trained model
-        dqn_agent.main_network.save('centuryV1_trained_agent.h5') # modify
-        print("Trained agent saved in 'centuryV1_trained_agent.h5'") # modify
+        dqn_agent.main_network.save('trained_agentV2.h5') # modify
+        print("Trained agent saved in 'trained_agentV2.h5'") # modify
 
