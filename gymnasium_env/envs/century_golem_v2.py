@@ -1,7 +1,6 @@
 from enum import Enum
 import gymnasium as gym
 from gymnasium import spaces
-import pygame
 import numpy as np
 
 class MerchantCard:
@@ -164,7 +163,7 @@ class CenturyGolemEnvV2(gym.Env):
     def step(self, action):
         assert self.action_space.contains(action), f"Invalid action: {action}"
         
-        reward = -1.0  # Base time-step penalty
+        reward = -1.5  # Base time-step penalty
         terminated = False
         
         if action == Actions.play_merchant_card1.value:
@@ -172,7 +171,7 @@ class CenturyGolemEnvV2(gym.Env):
                 self.yellow_crystals += self.merchant_card1.effect_yellow
                 self.green_crystals += self.merchant_card1.effect_green
                 self.merchant_card1.available = False
-                reward += 3.0
+                reward += 1.0
             else:
                 reward -= 1.0
         
@@ -189,7 +188,7 @@ class CenturyGolemEnvV2(gym.Env):
                 self.yellow_crystals += self.merchant_card2.effect_yellow
                 self.green_crystals += self.merchant_card2.effect_green
                 self.merchant_card2.available = False
-                reward += 3.0
+                reward += 1.0
             else:
                 reward -= 1.0
         
@@ -206,7 +205,7 @@ class CenturyGolemEnvV2(gym.Env):
                 self.yellow_crystals += self.merchant_card3.effect_yellow
                 self.green_crystals += self.merchant_card3.effect_green
                 self.merchant_card3.available = False
-                reward += 3.0
+                reward += 1.0
             else:
                 reward -= 1.0
                 
@@ -223,7 +222,7 @@ class CenturyGolemEnvV2(gym.Env):
                 self.yellow_crystals += self.merchant_card4.effect_yellow
                 self.green_crystals += self.merchant_card4.effect_green
                 self.merchant_card4.available = False
-                reward += 3.0
+                reward += 1.0
             else:
                 reward -= 1.0
                 
@@ -245,7 +244,7 @@ class CenturyGolemEnvV2(gym.Env):
                 self.yellow_crystals -= self.golem_card1.cost_yellow
                 self.green_crystals -= self.golem_card1.cost_green
                 self.golem_card1.owned = True
-                reward += 5.0
+                reward += 20.0
             else:
                 reward -= 1.0
                 
@@ -255,14 +254,14 @@ class CenturyGolemEnvV2(gym.Env):
                 # Note: Golem card 2 costs only green crystals.
                 self.green_crystals -= self.golem_card2.cost_green
                 self.golem_card2.owned = True
-                reward += 5.0
+                reward += 21.7
             else:
                 reward -= 1.0
 
         # Check winning condition
         if self._get_golem_state() != 0:
             terminated = True
-            reward = 10.0  # Terminal reward
+            reward += 100.0  # Terminal reward
         
         observation = self._get_obs()
         info = self._get_info()

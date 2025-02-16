@@ -5,7 +5,7 @@ from collections import deque
 
 import gymnasium as gym
 import gymnasium_env
-# from gymnasium.wrappers import FlattenObservation
+from gymnasium.wrappers import FlattenObservation
 import numpy as np
 from keras.layers import Dense
 from keras.models import Sequential
@@ -102,7 +102,7 @@ if __name__ == '__main__':
 
     # Initialize CenturyGolem environment
     env = gym.make('gymnasium_env/CenturyGolem-v2') # modify
-    # env = FlattenObservation(env)
+    env = FlattenObservation(env)
     state, _ = env.reset() # consider remove this as we reset it in the loop
 
     # Define state and action size
@@ -162,10 +162,10 @@ if __name__ == '__main__':
             elapsed = time.time() - start
             print(f'Time elapsed during EPISODE {ep+1}: {elapsed} seconds = {round(elapsed/60, 3)} minutes')
 
-            # If the agent got a reward >14.2 in each of the last 10 episodes, the training is terminated
-            # if sum(rewards[-10:]) > 142: # modify
-            #     print('Training stopped because agent has performed a perfect episode in the last 10 episodes')
-            #     break
+            # If the agent got a reward >25.9 in each of the last 10 episodes, the training is terminated
+            if sum(rewards[-10:]) > 259: # modify
+                print('Training stopped because agent has performed a perfect episode in the last 10 episodes')
+                break
     
     except KeyboardInterrupt:
         print("\nTraining interrupted manually by user.")

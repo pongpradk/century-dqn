@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 
+from gymnasium_env.envs.century_golem_v2 import Actions
 
 def load_pretrained_model(path):
     """Load a pretrained model from the path provided as parameter"""
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     for t in range(max_timesteps):
         state = state.reshape((1, state_size))
         action = select_trained_agent_action(state, trained_agent)
-        print(action)
+        print("ACTION -", Actions(int(action)).name)
         next_state, reward, terminal, _, _ = env.step(action)
         total_reward += reward
         state = next_state
@@ -74,6 +75,6 @@ if __name__ == '__main__':
         if terminal:
             break
 
+    print(total_reward)
     plot_rewards(1)
     plot_epsilon_values()
-    print(total_reward)
