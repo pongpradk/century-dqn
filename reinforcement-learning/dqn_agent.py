@@ -4,6 +4,8 @@ import time
 from collections import deque
 
 import gymnasium as gym
+import gymnasium_env
+from gymnasium.wrappers import FlattenObservation
 import numpy as np
 from keras.layers import Dense
 from keras.models import Sequential
@@ -20,10 +22,10 @@ class DQNAgent:
         self.replay_buffer = deque(maxlen=40000)
 
         # Set algorithm hyperparameters
-        self.gamma = 0.99
+        self.gamma = 0.9 # discount factor
         self.epsilon = 1.
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.98
+        self.epsilon_min = 0.1
+        self.epsilon_decay = 0.99
         self.learning_rate = 0.001
         self.update_rate = 10
 
@@ -98,8 +100,9 @@ class DQNAgent:
 
 if __name__ == '__main__':
 
-    # Initialize CartPole environment
-    env = gym.make("CartPole-v1")
+    # Initialize CenturyGolem environment
+    env = gym.make('gymnasium_env/CenturyGolem-v2') # modify
+    env = FlattenObservation(env)
     state, _ = env.reset() # consider remove this as we reset it in the loop
 
     # Define state and action size
@@ -107,73 +110,77 @@ if __name__ == '__main__':
     action_size = env.action_space.n
 
     # Define number of episodes, timesteps per episode and batch size
-    num_episodes = 150
-    num_timesteps = 500
+    num_episodes = 2500
+    num_timesteps = 50
     batch_size = 64
     dqn_agent = DQNAgent(state_size, action_size)
     time_step = 0  # Initialize timestep counter, used for updating Target Network
     rewards, epsilon_values = list(), list()  # List to keep logs of rewards and epsilon values, for plotting later
 
-    for ep in range(num_episodes):
+    try:
+        for ep in range(num_episodes):
 
-        tot_reward = 0
+            tot_reward = 0
 
-        state, _ = env.reset()
+            state, _ = env.reset()
 
-        print(f'\nTraining on EPISODE {ep+1} with epsilon {dqn_agent.epsilon}')
-        start = time.time()
+            print(f'\nTraining on EPISODE {ep+1} with epsilon {dqn_agent.epsilon}')
+            start = time.time()
 
-        for t in range(num_timesteps):
+            for t in range(num_timesteps):
 
-            time_step += 1
+                time_step += 1
 
-            # Update Target Network every {dqn_agent.update_rate} timesteps
-            if time_step % dqn_agent.update_rate == 0:
-                dqn_agent.update_target_network()
+                # Update Target Network every {dqn_agent.update_rate} timesteps
+                if time_step % dqn_agent.update_rate == 0:
+                    dqn_agent.update_target_network()
 
-            action = dqn_agent.pick_epsilon_greedy_action(state)  # Select action with ε-greedy policy
-            next_state, reward, terminal, _, _ = env.step(action)  # Perform action on environment
-            dqn_agent.save_experience(state, action, reward, next_state, terminal)  # Save experience in Replay Buffer
+                action = dqn_agent.pick_epsilon_greedy_action(state)  # Select action with ε-greedy policy
+                next_state, reward, terminal, _, _ = env.step(action)  # Perform action on environment
+                dqn_agent.save_experience(state, action, reward, next_state, terminal)  # Save experience in Replay Buffer
 
-            # Update current state to next state and total reward
-            state = next_state
-            tot_reward += reward
+                # Update current state to next state and total reward
+                state = next_state
+                tot_reward += reward
 
-            if terminal:
-                print('Episode: ', ep+1, ',' ' terminated with Reward ', tot_reward)
+                if terminal:
+                    print('Episode: ', ep+1, ',' ' terminated with Reward ', tot_reward)
+                    break
+
+                # Train the Main NN when ReplayBuffer has enough experiences to fill a batch
+                if len(dqn_agent.replay_buffer) > batch_size:
+                    dqn_agent.train(batch_size)
+
+            rewards.append(tot_reward)
+            epsilon_values.append(dqn_agent.epsilon)
+
+            # Everytime an episode ends, update Epsilon value to a lower value
+            if dqn_agent.epsilon > dqn_agent.epsilon_min:
+                dqn_agent.epsilon *= dqn_agent.epsilon_decay
+
+            # Print info about the episode performed
+            elapsed = time.time() - start
+            print(f'Time elapsed during EPISODE {ep+1}: {elapsed} seconds = {round(elapsed/60, 3)} minutes')
+
+            # If the agent got a reward >25.9 in each of the last 10 episodes, the training is terminated
+            if sum(rewards[-10:]) > 259: # modify
+                print('Training stopped because agent has performed a perfect episode in the last 10 episodes')
                 break
+    
+    except KeyboardInterrupt:
+        print("\nTraining interrupted manually by user.")
+    finally:
+        # Save rewards on 'rewards.txt' file
+        with open('rewardsV2.txt', 'w') as f: # modify
+            f.write(json.dumps(rewards))
+        print("Rewards of the training saved in 'rewardsV2.txt'") # modify
 
-            # Train the Main NN when ReplayBuffer has enough experiences to fill a batch
-            if len(dqn_agent.replay_buffer) > batch_size:
-                dqn_agent.train(batch_size)
+        # Save epsilon values
+        with open('epsilon_valuesV2.txt', 'w') as f: # modify
+            f.write(json.dumps(epsilon_values))
+        print("Epsilon values of the training saved in 'epsilon_valuesV2.txt'") # modify
 
-        rewards.append(tot_reward)
-        epsilon_values.append(dqn_agent.epsilon)
-
-        # Everytime an episode ends, update Epsilon value to a lower value
-        if dqn_agent.epsilon > dqn_agent.epsilon_min:
-            dqn_agent.epsilon *= dqn_agent.epsilon_decay
-
-        # Print info about the episode performed
-        elapsed = time.time() - start
-        print(f'Time elapsed during EPISODE {ep+1}: {elapsed} seconds = {round(elapsed/60, 3)} minutes')
-
-        # If the agent got a reward >499 in each of the last 10 episodes, the training is terminated
-        if sum(rewards[-10:]) > 4990:
-            print('Training stopped because agent has performed a perfect episode in the last 10 episodes')
-            break
-
-    # Save rewards on 'rewards.txt' file
-    with open('rewards.txt', 'w') as f:
-        f.write(json.dumps(rewards))
-    print("Rewards of the training saved in 'rewards.txt'")
-
-    # Save epsilon values
-    with open('epsilon_values.txt', 'w') as f:
-        f.write(json.dumps(epsilon_values))
-    print("Epsilon values of the training saved in 'epsilon_values.txt'")
-
-    # Save trained model
-    dqn_agent.main_network.save('trained_agent.h5')
-    print("Trained agent saved in 'trained_agent.h5'")
+        # Save trained model
+        dqn_agent.main_network.save('trained_agentV2.h5') # modify
+        print("Trained agent saved in 'trained_agentV2.h5'") # modify
 

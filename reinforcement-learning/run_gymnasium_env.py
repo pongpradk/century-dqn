@@ -3,8 +3,8 @@ import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
 from gymnasium_env.envs.century_golem_v2 import Actions
 import sys
-sys.path.append("/Users/pongpradk/Documents/Codes/century/gymnasium_env/envs/century_golem_v2.py")
-env = gymnasium.make('gymnasium_env/CenturyGolem-v2', render_mode='text')
+sys.path.append("/Users/pongpradk/Documents/Codes/century/gymnasium_env/envs/century_v3.py")
+env = gymnasium.make('gymnasium_env/CenturyGolem-v3', render_mode='text')
 # env = FlattenObservation(env)
 
 state, _ = env.reset()
