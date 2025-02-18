@@ -49,7 +49,7 @@ class CenturyGolemEnvV2(gym.Env):
             "merchant_card3_available": spaces.Discrete(2),
             "merchant_card4_owned": spaces.Discrete(2),
             "merchant_card4_available": spaces.Discrete(2),
-            "golem_cards_market": spaces.MultiDiscrete([5, 5, 5]),  # Current golem cards in market
+            "golem_cards_market": spaces.MultiDiscrete([5, 5, 5, 5, 5]),  # Current golem cards in market
             "golem_cards_owned_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32)  # New: number of golem cards owned
         })
         
@@ -76,7 +76,7 @@ class CenturyGolemEnvV2(gym.Env):
         ]
         
         # initialize the market with 3 random golem cards
-        self.market = random.sample(self.golem_cards, 3)
+        self.market = random.sample(self.golem_cards, 5)
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -92,12 +92,14 @@ class CenturyGolemEnvV2(gym.Env):
             "merchant_card3_available": int(self.merchant_card3.available),
             "merchant_card4_owned": int(self.merchant_card4.owned),
             "merchant_card4_available": int(self.merchant_card4.available),
-            "golem_cards_market": np.array(
-                [self.golem_cards.index(card) for card in self.market], dtype=np.int32
+            "golem_cards_market": np.pad(
+                np.array([self.golem_cards.index(card) for card in self.market], dtype=np.int32),
+                (0, 5 - len(self.market)),  # Ensures 5 elements are always returned
+                constant_values=-1  # Use -1 for missing values if fewer than 5 cards exist
             ),
             "golem_cards_owned_count": np.array(
                 [sum(1 for card in self.golem_cards if card.owned)], dtype=np.int32
-            )  # New: Count number of owned golem cards
+            )  # ✅ Now correctly returns owned golem card count
         }
     
     def _get_info(self):
@@ -123,7 +125,7 @@ class CenturyGolemEnvV2(gym.Env):
         for card in self.golem_cards:
             card.owned = False
             
-        self.market = random.sample(self.golem_cards, 3)
+        self.market = random.sample(self.golem_cards, min(5, len(self.golem_cards)))
         
         observation = self._get_obs()
         info = self._get_info()
@@ -229,19 +231,21 @@ class CenturyGolemEnvV2(gym.Env):
                 reward += selected_golem.points
 
                 # Remove from market and replace if possible
-                self.market.remove(selected_golem)  
-                if len(self.market) < 3:
+                self.market.remove(selected_golem)
+                if len(self.market) < 5:
                     available_golems = [g for g in self.golem_cards if g not in self.market and not g.owned]
-                    if available_golems:
-                        self.market.append(random.choice(available_golems))
+                    while len(self.market) < 5 and available_golems:
+                        new_card = random.choice(available_golems)
+                        self.market.append(new_card)
+                        available_golems.remove(new_card)
 
             else:
                 reward -= 1.0  # Penalize invalid action (trying to acquire a golem card not in market)
 
-        # Check if all golem cards have been acquired (end condition)
-        if all(card.owned for card in self.golem_cards):
+        # Check if the player has acquired 2 golem cards (end condition)
+        if sum(1 for card in self.golem_cards if card.owned) >= 2:
             terminated = True
-            reward += 100.0 
+            reward += 100.0  # Terminal reward for winning 
         
         observation = self._get_obs()
         info = self._get_info()
@@ -266,9 +270,14 @@ class CenturyGolemEnvV2(gym.Env):
             print(f"M3: {self._card_status(self.merchant_card3)}")
             print(f"M4: {self._card_status(self.merchant_card4)}")
             
-            # Compute available golem cards in the market (i.e. only show the market cards)
-            golem_available = [str(self.golem_cards.index(card) + 1) for card in self.market if not card.owned]
-            gm_str = ", ".join(golem_available) if golem_available else "None"
+            # Ensure 5 golem cards are always shown in market display
+            if len(self.market) < 5:
+                missing_slots = 5 - len(self.market)
+                golem_available = [str(self.golem_cards.index(card) + 1) for card in self.market] + ["-"] * missing_slots
+            else:
+                golem_available = [str(self.golem_cards.index(card) + 1) for card in self.market]
+
+            gm_str = ", ".join(golem_available)
 
             # Count the number of owned golem cards (instead of listing them)
             golem_cards_owned_count = sum(1 for card in self.golem_cards if card.owned)
