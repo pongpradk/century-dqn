@@ -242,6 +242,35 @@ class CenturyGolemEnvV2(gym.Env):
             else:
                 reward -= 1.0  # Penalize invalid action (trying to acquire a golem card not in market)
 
+        # Enforce 10-crystal limit before moving to next step
+        def enforce_crystal_limit(self):
+            total_crystals = self.yellow_crystals + self.green_crystals
+            if total_crystals > 10:
+                excess = total_crystals - 10
+                yellow_lost = 0
+                green_lost = 0
+
+                # Remove excess starting with yellow, then green
+                if self.yellow_crystals >= excess:
+                    yellow_lost = excess
+                    self.yellow_crystals -= excess
+                else:
+                    yellow_lost = self.yellow_crystals
+                    excess -= self.yellow_crystals
+                    self.yellow_crystals = 0
+                    green_lost = excess
+                    self.green_crystals = max(0, self.green_crystals - excess)
+
+                # Apply penalty for losing crystals
+                penalty = - (0.5 * yellow_lost + 1.0 * green_lost)
+                return penalty
+            
+            return 0  # No penalty if no excess crystals
+
+        # Apply crystal limit before returning the observation
+        penalty = enforce_crystal_limit(self)
+        reward += penalty  # Apply the penalty to the step reward
+
         # Check if the player has acquired 2 golem cards (end condition)
         if sum(1 for card in self.golem_cards if card.owned) >= 2:
             terminated = True

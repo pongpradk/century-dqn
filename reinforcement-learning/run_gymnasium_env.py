@@ -37,6 +37,6 @@ def best_strategy(action_sequence):
     print(tot_reward)
     env.close()
 
-best_strategy([4, 6, 5, 7, 8, 0, 5, 7, 10, 0])
-# best_strategy([6, 7, 0, 7, 9])
+# best_strategy([4, 6, 5, 7, 8, 0, 5, 7, 10, 0])
+best_strategy([2, 4, 6, 1, 3, 5, 7, 0, 1, 3, 5, 7, 0])
 # random()
