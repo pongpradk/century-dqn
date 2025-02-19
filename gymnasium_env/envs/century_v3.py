@@ -68,11 +68,11 @@ class CenturyGolemEnv(gym.Env):
         self.merchant_card4 = MerchantCard("merchant card 4", effect_yellow=0, effect_green=2, owned=False, available=False)
         
         self.golem_cards = [
-            GolemCard("Golem Card 1", cost_yellow=2, cost_green=2, points=10, owned=False),
-            GolemCard("Golem Card 2", cost_yellow=3, cost_green=2, points=12, owned=False),
-            GolemCard("Golem Card 3", cost_yellow=2, cost_green=3, points=14, owned=False),
-            GolemCard("Golem Card 4", cost_yellow=0, cost_green=4, points=16, owned=False),
-            GolemCard("Golem Card 5", cost_yellow=0, cost_green=5, points=18, owned=False)
+            GolemCard("Golem Card 1", cost_yellow=2, cost_green=2, points=6, owned=False),
+            GolemCard("Golem Card 2", cost_yellow=3, cost_green=2, points=7, owned=False),
+            GolemCard("Golem Card 3", cost_yellow=2, cost_green=3, points=8, owned=False),
+            GolemCard("Golem Card 4", cost_yellow=0, cost_green=4, points=8, owned=False),
+            GolemCard("Golem Card 5", cost_yellow=0, cost_green=5, points=10, owned=False)
         ]
         
         # initialize the market with 3 random golem cards
