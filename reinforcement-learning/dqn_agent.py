@@ -19,15 +19,15 @@ class DQNAgent:
         self.action_size = action_size
 
         # Initialize Replay Buffer as python deque
-        self.replay_buffer = deque(maxlen=40000)
+        self.replay_buffer = deque(maxlen=50000)
 
         # Set algorithm hyperparameters
-        self.gamma = 0.9 # discount factor
-        self.epsilon = 1.
-        self.epsilon_min = 0.1
-        self.epsilon_decay = 0.99
-        self.learning_rate = 0.001
-        self.update_rate = 10
+        self.gamma = 0.95 # discount factor
+        self.epsilon = 1.0
+        self.epsilon_min = 0.05
+        self.epsilon_decay = 0.995
+        self.learning_rate = 0.00025
+        self.update_rate = 50
 
         # Create both Main and Target Neural Networks
         self.main_network = self.create_nn()
@@ -39,8 +39,8 @@ class DQNAgent:
     def create_nn(self):
         model = Sequential()
 
-        model.add(Dense(32, activation='relu', input_dim=self.state_size))
-        model.add(Dense(32, activation='relu'))
+        model.add(Dense(128, activation='relu', input_dim=self.state_size))
+        model.add(Dense(128, activation='relu'))
         model.add(Dense(self.action_size, activation='linear'))
 
         model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
@@ -110,9 +110,9 @@ if __name__ == '__main__':
     action_size = env.action_space.n
 
     # Define number of episodes, timesteps per episode and batch size
-    num_episodes = 2500
-    num_timesteps = 50
-    batch_size = 64
+    num_episodes = 5000
+    num_timesteps = 100
+    batch_size = 128
     dqn_agent = DQNAgent(state_size, action_size)
     time_step = 0  # Initialize timestep counter, used for updating Target Network
     rewards, epsilon_values = list(), list()  # List to keep logs of rewards and epsilon values, for plotting later

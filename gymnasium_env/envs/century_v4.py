@@ -92,6 +92,8 @@ class CenturyGolemEnv(gym.Env):
         
         self.player1 = Player(1)
         
+        self.steps_taken = 0
+        
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
     
@@ -137,6 +139,8 @@ class CenturyGolemEnv(gym.Env):
         self.player1.golem_count = 0
         self.player1.points = 0
         
+        self.steps_taken = 0
+        
         observation = self._get_obs()
         info = self._get_info()
 
@@ -146,13 +150,15 @@ class CenturyGolemEnv(gym.Env):
         return observation, info
     
     def step(self, action):
-        reward = -1.0  # Base time-step penalty
+        reward = -0.5  # Base time-step penalty
         terminated = False
+        
+        self.steps_taken += 1
         
         # Rest
         if action == Actions.rest.value:
             self.player1.merchant_cards = [2 if card == 1 else card for card in self.player1.merchant_cards]
-            reward -= 0.5
+            reward += 0.3
             
         # Get a merchant card
         elif Actions.getM2.value <= action <= Actions.getM6.value:
@@ -175,9 +181,9 @@ class CenturyGolemEnv(gym.Env):
                     new_card = random.choice(cards_in_deck)
                     self.merchant_market.append(new_card)
                 
-                reward+= 5.0
+                reward += 1.0 + (0.2 * self.merchant_deck[card_id].gain['yellow']) + (0.4 * self.merchant_deck[card_id].gain['green'])
             else:
-                reward = -2.0
+                reward -= 1.0
                 
         # Use a merchant card
         elif Actions.useM1.value <= action <= Actions.useM6.value:
@@ -190,7 +196,7 @@ class CenturyGolemEnv(gym.Env):
                 # Give reward
                 reward += (0.5 * self.merchant_deck[card_id].gain['yellow'] + 1.0 * self.merchant_deck[card_id].gain['green'])
             else:
-                reward -= 2.0
+                reward -= 1.0
         
         # Get a golem card
         elif Actions.getG1.value <= action <= Actions.getG5.value:
@@ -216,42 +222,35 @@ class CenturyGolemEnv(gym.Env):
                         new_card = random.choice(cards_in_deck)
                         self.golem_market.append(new_card)
                         
-                    reward += 20 + self.golem_deck[card_id].points
+                    reward += 10 + self.golem_deck[card_id].points
                 else:   
-                    reward -= 2.0
+                    reward -= 1.0
             else:
-                reward -= 2.0
+                reward -= 1.0
 
         # Enforce 10-crystal limit before moving to next step
         def _enforce_crystal_limit(self):
-            # total_crystals = self.player1.yellow + self.player1.green
-            # if total_crystals > 10:
-            #     excess = total_crystals - 10
-            #     yellow_lost = 0
-            #     green_lost = 0
-
-            #     # Remove excess starting with yellow, then green
-            #     if self.player1.yellow >= excess:
-            #         yellow_lost = excess
-            #         self.player1.yellow -= excess
-            #     else:
-            #         yellow_lost = self.player1.yellow
-            #         excess -= self.player1.yellow
-            #         self.player1.yellow = 0
-            #         green_lost = excess
-            #         self.player1.green = max(0, self.player1.green - excess)
-
-            #     # Apply penalty for losing crystals
-            #     # penalty = - (0.5 * yellow_lost + 1.0 * green_lost)
-            #     return -1.0 * (yellow_lost + green_lost)
-            
-            # return 0  # No penalty if no excess crystals
             total_crystals = self.player1.yellow + self.player1.green
             if total_crystals > 10:
                 excess = total_crystals - 10
-                self.player1.yellow = max(0, self.player1.yellow - excess)
-                self.player1.green = max(0, self.player1.green - (excess - self.player1.yellow))
-                return -1.0 * excess  # Penalty per excess crystal
+                yellow_lost = 0
+                green_lost = 0
+
+                # Remove excess starting with yellow, then green
+                if self.player1.yellow >= excess:
+                    yellow_lost = excess
+                    self.player1.yellow -= excess
+                else:
+                    yellow_lost = self.player1.yellow
+                    excess -= self.player1.yellow
+                    self.player1.yellow = 0
+                    green_lost = excess
+                    self.player1.green = max(0, self.player1.green - excess)
+
+                # Apply penalty for losing crystals
+                penalty = - (0.5 * yellow_lost + 1.0 * green_lost)
+                return penalty
+            
             return 0  # No penalty if no excess crystals
 
         # Apply crystal limit before returning the observation
@@ -261,7 +260,10 @@ class CenturyGolemEnv(gym.Env):
         # Check for terminating condition
         if self.player1.golem_count >= 2:
             terminated = True
-            reward += 100.0
+            
+            base_completion_reward = 100
+            efficiency_bonus = max(0, 50 - self.steps_taken)
+            reward += base_completion_reward + efficiency_bonus
         
         observation = self._get_obs()
         info = self._get_info()
