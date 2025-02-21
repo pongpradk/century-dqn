@@ -12,6 +12,8 @@ class Player:
         self.green = 0
         # status of each merchant card for this player
         self.merchant_cards = [2] + [0] * 5 # 0 = not owned, 1 = owned but unplayable, 2 = owned and playable
+        self.golem_count = 0
+        self.points = 0
 
 class MerchantCard:
         
@@ -24,11 +26,11 @@ class MerchantCard:
         self.owned = owned
 
 class GolemCard:
-    def __init__(self, name, cost_yellow, cost_green, points, owned=False):
+    def __init__(self, card_id, name, cost, points, owned=False):
+        self.card_id = card_id
         self.name = name
-        self.cost_yellow = cost_yellow  # Cost in yellow crystals to acquire
-        self.cost_green = cost_green    # Cost in green crystals to acquire
-        self.points = points            # Points associated with this card
+        self.cost = cost
+        self.points = points
         self.owned = owned
         
 class Actions(Enum):
@@ -59,8 +61,8 @@ class CenturyGolemEnv(gym.Env):
             "player_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "merchant_cards": spaces.MultiDiscrete([3] * 6),
             "merchant_market": spaces.MultiDiscrete([8, 8, 8, 8, 8]),  # Allow 7 as placeholder for empty
-            "golem_cards_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),  # Allow 5 as placeholder for empty
-            "golem_cards_owned_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32)  # New: number of golem cards owned
+            "golem_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),  # Allow 5 as placeholder for empty
+            "golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32)  # New: number of golem cards owned
         })
         
         self.action_space = spaces.Discrete(16)
@@ -78,16 +80,15 @@ class CenturyGolemEnv(gym.Env):
             [card for cid, card in self.merchant_deck.items() if cid != 1], 5 # draw 3 cards to market, excluding M1
         )
         
-        self.golem_cards = [
-            GolemCard("Golem Card 1", cost_yellow=2, cost_green=2, points=6, owned=False),
-            GolemCard("Golem Card 2", cost_yellow=3, cost_green=2, points=7, owned=False),
-            GolemCard("Golem Card 3", cost_yellow=2, cost_green=3, points=8, owned=False),
-            GolemCard("Golem Card 4", cost_yellow=0, cost_green=4, points=8, owned=False),
-            GolemCard("Golem Card 5", cost_yellow=0, cost_green=5, points=10, owned=False)
-        ]
+        self.golem_deck = {
+            1: GolemCard(1, "Y2G2", {"yellow": 2, "green": 2}, points=6),
+            2: GolemCard(2, "Y3G2", {"yellow": 3, "green": 2}, points=7),
+            3: GolemCard(3, "Y2G3", {"yellow": 3, "green": 2}, points=8),
+            4: GolemCard(4, "G4", {"yellow": 0, "green": 4}, points=8),
+            5: GolemCard(5, "G5", {"yellow": 0, "green": 5}, points=10)
+        }
         
-        # initialize the market with 3 random golem cards
-        self.market = random.sample(self.golem_cards, 5)
+        self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
         self.player1 = Player(1)
         
@@ -97,23 +98,21 @@ class CenturyGolemEnv(gym.Env):
     def _get_obs(self):
         merchant_cards_state = np.array(self.player1.merchant_cards, dtype=np.int32)
 
-        market_state = [card.card_id for card in self.merchant_market]
-        while len(market_state) < 5:
-            market_state.append(7)  # Fill empty slots with 7
+        merchant_market_state = [card.card_id for card in self.merchant_market]
+        while len(merchant_market_state) < 5:
+            merchant_market_state.append(7)  # Fill empty slots with 7
+        
+        golem_market_state = [card.card_id for card in self.golem_market]
+        while len(golem_market_state) < 5:
+            golem_market_state.append(6)
         
         return {
             "player_yellow": np.array([self.player1.yellow], dtype=np.int32),
             "player_green": np.array([self.player1.green], dtype=np.int32),
             "merchant_cards": merchant_cards_state,
-            "merchant_market": np.array(market_state, dtype=np.int32),
-            "golem_cards_market": np.pad(
-                np.array([self.golem_cards.index(card) for card in self.market], dtype=np.int32),
-                (0, 5 - len(self.market)),  # Ensures 5 elements are always returned
-                constant_values=-5
-            ),
-            "golem_cards_owned_count": np.array(
-                [sum(1 for card in self.golem_cards if card.owned)], dtype=np.int32
-            )  # ✅ Now correctly returns owned golem card count
+            "merchant_market": np.array(merchant_market_state, dtype=np.int32),
+            "golem_market": np.array(golem_market_state, dtype=np.int32),
+            "golem_count": np.array([self.player1.golem_count], dtype=np.int32)
         }
     
     def _get_info(self):
@@ -128,15 +127,15 @@ class CenturyGolemEnv(gym.Env):
             [card for cid, card in self.merchant_deck.items() if cid != 1], 5 # draw 3 cards to market, excluding M1
         )
         
-        for card in self.golem_cards:
-            card.owned = False
-            
-        self.market = random.sample(self.golem_cards, min(5, len(self.golem_cards)))
+        [setattr(card, 'owned', card.card_id == 1) for card in self.golem_deck.values()]
+        
+        self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
         self.player1.yellow = 0
         self.player1.green = 0
-        
         self.player1.merchant_cards = [2] + [0] * 5
+        self.player1.golem_count = 0
+        self.player1.points = 0
         
         observation = self._get_obs()
         info = self._get_info()
@@ -154,6 +153,7 @@ class CenturyGolemEnv(gym.Env):
         if action == Actions.rest.value:
             self.player1.merchant_cards = [2 if card == 1 else card for card in self.player1.merchant_cards]
             reward += 0.3
+            
         # Get a merchant card
         elif Actions.getM2.value <= action <= Actions.getM6.value:
             card_id = action + 1 # e.g. action 1 = get M2
@@ -178,6 +178,7 @@ class CenturyGolemEnv(gym.Env):
                 reward+= 2.0
             else:
                 reward = -1.0
+                
         # Use a merchant card
         elif Actions.useM1.value <= action <= Actions.useM6.value:
             card_id, card_idx = action - 5, action - 6 # e.g. action 10 = use M5 = card_id 5 = card_idx 4
@@ -189,36 +190,38 @@ class CenturyGolemEnv(gym.Env):
             else:
                 reward -= 1.0
         
-        # Handle acquiring golem cards from the market
-        elif action in range(Actions.acquire_golem_card1.value, Actions.acquire_golem_card5.value + 1):
-            golem_index = action - Actions.acquire_golem_card1.value
-            selected_golem = self.golem_cards[golem_index]
-
-            # Check if the selected golem is in the market before proceeding
-            if (selected_golem in self.market and 
-                self.yellow_crystals >= selected_golem.cost_yellow and 
-                self.green_crystals >= selected_golem.cost_green and 
-                not selected_golem.owned):
-
-                self.yellow_crystals -= selected_golem.cost_yellow
-                self.green_crystals -= selected_golem.cost_green
-                selected_golem.owned = True
-                reward += selected_golem.points
-
-                # Remove from market and replace if possible
-                self.market.remove(selected_golem)
-                if len(self.market) < 5:
-                    available_golems = [g for g in self.golem_cards if g not in self.market and not g.owned]
-                    while len(self.market) < 5 and available_golems:
-                        new_card = random.choice(available_golems)
-                        self.market.append(new_card)
-                        available_golems.remove(new_card)
-
+        # Get a golem card
+        elif Actions.getG1.value <= action <= Actions.getG5.value:
+            card_id = action - Actions.getG1.value + 1 # e.g. action 12 = get G1
+            # Check if golem in market
+            if self.golem_deck[card_id] in self.golem_market:
+                # Check if player has enough crystals
+                if (self.player1.yellow >= self.golem_deck[card_id].cost["yellow"] and self.player1.green >= self.golem_deck[card_id].cost["green"]):
+                    self.player1.yellow -= self.golem_deck[card_id].cost["yellow"]
+                    self.player1.green -= self.golem_deck[card_id].cost["green"]
+                    self.player1.golem_count += 1
+                    self.player1.points += self.golem_deck[card_id].points
+                    self.golem_deck[card_id].owned = True
+                    
+                    self.golem_market.remove(self.golem_deck[card_id]) # remove taken card from market
+                    # Find remaining cards in deck
+                    cards_in_deck = [
+                        card for card in self.golem_deck.values()
+                        if not card.owned and card not in self.golem_market
+                    ]
+                    # Draw random card from deck
+                    if cards_in_deck:
+                        new_card = random.choice(cards_in_deck)
+                        self.golem_market.append(new_card)
+                        
+                    reward += self.golem_deck[card_id].points
+                else:   
+                    reward -= 1.0
             else:
-                reward -= 1.0  # Penalize invalid action (trying to acquire a golem card not in market)
+                reward -= 1.0
 
         # Enforce 10-crystal limit before moving to next step
-        def enforce_crystal_limit(self):
+        def _enforce_crystal_limit(self):
             total_crystals = self.player1.yellow + self.player1.green
             if total_crystals > 10:
                 excess = total_crystals - 10
@@ -243,13 +246,13 @@ class CenturyGolemEnv(gym.Env):
             return 0  # No penalty if no excess crystals
 
         # Apply crystal limit before returning the observation
-        penalty = enforce_crystal_limit(self)
+        penalty = _enforce_crystal_limit(self)
         reward += penalty  # Apply the penalty to the step reward
-
-        # Check if the player has acquired 2 golem cards (end condition)
-        if sum(1 for card in self.golem_cards if card.owned) >= 2:
+            
+        # Check for terminating condition
+        if self.player1.golem_count >= 2:
             terminated = True
-            reward += 100.0  # Terminal reward for winning 
+            reward += 100.0
         
         observation = self._get_obs()
         info = self._get_info()
@@ -269,22 +272,10 @@ class CenturyGolemEnv(gym.Env):
                     continue
                 print(f"M{i+1}: {status_map[card_status]}")
             print("MM: " + " | ".join([f"M{m.card_id}-{m.name}" for m in self.merchant_market]))
-            
-            # Ensure 5 golem cards are always shown in market display
-            if len(self.market) < 5:
-                missing_slots = 5 - len(self.market)
-                golem_available = [str(self.golem_cards.index(card) + 1) for card in self.market] + ["-"] * missing_slots
-            else:
-                golem_available = [str(self.golem_cards.index(card) + 1) for card in self.market]
-
-            gm_str = ", ".join(golem_available)
-
-            # Count the number of owned golem cards (instead of listing them)
-            golem_cards_owned_count = sum(1 for card in self.golem_cards if card.owned)
-
-            print(f"GM: {gm_str}")
-            print(f"GO: {golem_cards_owned_count} owned")  # Updated to show count instead of specific cards
-            print("")       
+            print("GM: " + " | ".join([f"G{g.card_id}-{g.name}-{g.points}" for g in self.golem_market]))
+            print(f"GC: {self.player1.golem_count}")
+            print(f"P: {self.player1.points}")
+            print("")     
     
     def close(self):
-        print("Closing the Century Golem environment...")
+        print("=== CLOSE ENVIRONMENT ===")
