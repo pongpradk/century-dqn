@@ -58,7 +58,7 @@ class CenturyGolemEnv(gym.Env):
             "player_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "player_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "merchant_cards": spaces.MultiDiscrete([3] * 6),
-            "merchant_market": spaces.MultiDiscrete([7, 7, 7]),
+            "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7]),
             "golem_cards_market": spaces.MultiDiscrete([5, 5, 5, 5, 5]),  # Current golem cards in market
             "golem_cards_owned_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32)  # New: number of golem cards owned
         })
@@ -75,7 +75,7 @@ class CenturyGolemEnv(gym.Env):
         }
 
         self.merchant_market = random.sample(
-            [card for cid, card in self.merchant_deck.items() if cid != 1], 3 # draw 3 cards to market, excluding M1
+            [card for cid, card in self.merchant_deck.items() if cid != 1], 5 # draw 3 cards to market, excluding M1
         )
         
         self.golem_cards = [
@@ -125,7 +125,7 @@ class CenturyGolemEnv(gym.Env):
         [setattr(card, 'owned', card.card_id == 1) for card in self.merchant_deck.values()]
         
         self.merchant_market = random.sample(
-            [card for cid, card in self.merchant_deck.items() if cid != 1], 3 # draw 3 cards to market, excluding M1
+            [card for cid, card in self.merchant_deck.items() if cid != 1], 5 # draw 3 cards to market, excluding M1
         )
         
         for card in self.golem_cards:
