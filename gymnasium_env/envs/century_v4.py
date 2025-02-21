@@ -58,8 +58,8 @@ class CenturyGolemEnv(gym.Env):
             "player_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "player_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "merchant_cards": spaces.MultiDiscrete([3] * 6),
-            "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7]),
-            "golem_cards_market": spaces.MultiDiscrete([5, 5, 5, 5, 5]),  # Current golem cards in market
+            "merchant_market": spaces.MultiDiscrete([8, 8, 8, 8, 8]),  # Allow 7 as placeholder for empty
+            "golem_cards_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),  # Allow 5 as placeholder for empty
             "golem_cards_owned_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32)  # New: number of golem cards owned
         })
         
@@ -98,7 +98,7 @@ class CenturyGolemEnv(gym.Env):
         merchant_cards_state = np.array(self.player1.merchant_cards, dtype=np.int32)
 
         market_state = [card.card_id for card in self.merchant_market]
-        while len(market_state) < 3:
+        while len(market_state) < 5:
             market_state.append(7)  # Fill empty slots with 7
         
         return {
@@ -109,7 +109,7 @@ class CenturyGolemEnv(gym.Env):
             "golem_cards_market": np.pad(
                 np.array([self.golem_cards.index(card) for card in self.market], dtype=np.int32),
                 (0, 5 - len(self.market)),  # Ensures 5 elements are always returned
-                constant_values=-1  # Use -1 for missing values if fewer than 5 cards exist
+                constant_values=-5
             ),
             "golem_cards_owned_count": np.array(
                 [sum(1 for card in self.golem_cards if card.owned)], dtype=np.int32
@@ -243,8 +243,8 @@ class CenturyGolemEnv(gym.Env):
             return 0  # No penalty if no excess crystals
 
         # Apply crystal limit before returning the observation
-        # penalty = enforce_crystal_limit(self)
-        # reward += penalty  # Apply the penalty to the step reward
+        penalty = enforce_crystal_limit(self)
+        reward += penalty  # Apply the penalty to the step reward
 
         # Check if the player has acquired 2 golem cards (end condition)
         if sum(1 for card in self.golem_cards if card.owned) >= 2:
@@ -258,12 +258,6 @@ class CenturyGolemEnv(gym.Env):
             self.render()
         
         return observation, reward, terminated, False, info
-
-    def _card_status(self, card):
-        """Return the status of a merchant card as a string."""
-        if card.owned:
-            return "playable" if card.available else "unplayable"
-        return "not owned"
     
     def render(self):
         if self.render_mode == "text":
