@@ -156,96 +156,38 @@ class CenturyGolemEnv(gym.Env):
             reward += 0.3
         # Get a merchant card
         elif Actions.getM2.value <= action <= Actions.getM6.value:
-            self.player1.merchant_cards[action] = 2
+            card_id = action + 1 # e.g. action 1 = get M2
+            
+            # Check if card is in market
+            if self.merchant_deck[card_id] in self.merchant_market:
+                # Execute action
+                self.player1.merchant_cards[action] = 2
 
-            self.merchant_deck[action+1].owned = True # set taken card to owned
-            self.merchant_market.remove(self.merchant_deck[action+1]) # remove taken card from market
-            # Find remaining cards in deck
-            cards_in_deck = [
-                card for cid, card in self.merchant_deck.items()
-                if cid != 1 and not card.owned and card not in self.merchant_market
-            ]
-            # Draw random card from deck
-            if cards_in_deck:
-                new_card = random.choice(cards_in_deck)
-                self.merchant_market.append(new_card)   
+                self.merchant_deck[card_id].owned = True # set taken card to owned
+                self.merchant_market.remove(self.merchant_deck[card_id]) # remove taken card from market
+                # Find remaining cards in deck
+                cards_in_deck = [
+                    card for cid, card in self.merchant_deck.items()
+                    if cid != 1 and not card.owned and card not in self.merchant_market
+                ]
+                # Draw random card from deck
+                if cards_in_deck:
+                    new_card = random.choice(cards_in_deck)
+                    self.merchant_market.append(new_card)
+                
+                reward+= 2.0
+            else:
+                reward = -1.0
         # Use a merchant card
         elif Actions.useM1.value <= action <= Actions.useM6.value:
-            card_id = action - 5
-            self.player1.yellow += self.merchant_deck[card_id].gain['yellow']
-            self.player1.green += self.merchant_deck[card_id].gain['green']
-            self.player1.merchant_cards[card_id-1] = 1 # set card status to owned but unplayable
-        
-        # if action == Actions.play_merchant_card1.value:
-        #     if self.merchant_card1.available:
-        #         self.yellow_crystals += self.merchant_card1.effect_yellow
-        #         self.green_crystals += self.merchant_card1.effect_green
-        #         self.merchant_card1.available = False
-        #         reward += 1.0
-        #     else:
-        #         reward -= 1.0
-        
-        # elif action == Actions.acquire_merchant_card2.value:
-        #     if not self.merchant_card2.owned:
-        #         self.merchant_card2.owned = True
-        #         self.merchant_card2.available = True
-        #         reward += 2.0
-        #     else:
-        #         reward -= 1.0
-                
-        # elif action == Actions.play_merchant_card2.value:
-        #     if self.merchant_card2.owned and self.merchant_card2.available:
-        #         self.yellow_crystals += self.merchant_card2.effect_yellow
-        #         self.green_crystals += self.merchant_card2.effect_green
-        #         self.merchant_card2.available = False
-        #         reward += 1.0
-        #     else:
-        #         reward -= 1.0
-        
-        # elif action == Actions.acquire_merchant_card3.value:
-        #     if not self.merchant_card3.owned:
-        #         self.merchant_card3.owned = True
-        #         self.merchant_card3.available = True
-        #         reward += 2.0
-        #     else:
-        #         reward -= 1.0
-                
-        # elif action == Actions.play_merchant_card3.value:
-        #     if self.merchant_card3.owned and self.merchant_card3.available:
-        #         self.yellow_crystals += self.merchant_card3.effect_yellow
-        #         self.green_crystals += self.merchant_card3.effect_green
-        #         self.merchant_card3.available = False
-        #         reward += 1.0
-        #     else:
-        #         reward -= 1.0
-                
-        # elif action == Actions.acquire_merchant_card4.value:
-        #     if not self.merchant_card4.owned:
-        #         self.merchant_card4.owned = True
-        #         self.merchant_card4.available = True
-        #         reward += 2.0
-        #     else:
-        #         reward -= 1.0
-                
-        # elif action == Actions.play_merchant_card4.value:
-        #     if self.merchant_card4.owned and self.merchant_card4.available:
-        #         self.yellow_crystals += self.merchant_card4.effect_yellow
-        #         self.green_crystals += self.merchant_card4.effect_green
-        #         self.merchant_card4.available = False
-        #         reward += 1.0
-        #     else:
-        #         reward -= 1.0
-                
-        # elif action == Actions.rest.value:
-        #     # Rest resets the availability of any owned cards.
-        #     self.merchant_card1.available = True
-        #     if self.merchant_card2.owned:
-        #         self.merchant_card2.available = True
-        #     if self.merchant_card3.owned:
-        #         self.merchant_card3.available = True
-        #     if self.merchant_card4.owned:
-        #         self.merchant_card4.available = True
-        #     reward += 0.3
+            card_id, card_idx = action - 5, action - 6 # e.g. action 10 = use M5 = card_id 5 = card_idx 4
+            if self.player1.merchant_cards[card_idx] == 2: # if card is playable
+                self.player1.yellow += self.merchant_deck[card_id].gain['yellow']
+                self.player1.green += self.merchant_deck[card_id].gain['green']
+                self.player1.merchant_cards[card_idx] = 1 # set card status to owned but unplayable
+                reward += 1.0
+            else:
+                reward -= 1.0
         
         # Handle acquiring golem cards from the market
         elif action in range(Actions.acquire_golem_card1.value, Actions.acquire_golem_card5.value + 1):
@@ -277,22 +219,22 @@ class CenturyGolemEnv(gym.Env):
 
         # Enforce 10-crystal limit before moving to next step
         def enforce_crystal_limit(self):
-            total_crystals = self.yellow_crystals + self.green_crystals
+            total_crystals = self.player1.yellow + self.player1.green
             if total_crystals > 10:
                 excess = total_crystals - 10
                 yellow_lost = 0
                 green_lost = 0
 
                 # Remove excess starting with yellow, then green
-                if self.yellow_crystals >= excess:
+                if self.player1.yellow >= excess:
                     yellow_lost = excess
-                    self.yellow_crystals -= excess
+                    self.player1.yellow -= excess
                 else:
-                    yellow_lost = self.yellow_crystals
-                    excess -= self.yellow_crystals
-                    self.yellow_crystals = 0
+                    yellow_lost = self.player1.yellow
+                    excess -= self.player1.yellow
+                    self.player1.yellow = 0
                     green_lost = excess
-                    self.green_crystals = max(0, self.green_crystals - excess)
+                    self.player1.green = max(0, self.player1.green - excess)
 
                 # Apply penalty for losing crystals
                 penalty = - (0.5 * yellow_lost + 1.0 * green_lost)
@@ -333,13 +275,6 @@ class CenturyGolemEnv(gym.Env):
                     continue
                 print(f"M{i+1}: {status_map[card_status]}")
             print("MM: " + " | ".join([f"M{m.card_id}-{m.name}" for m in self.merchant_market]))
-                        
-            # print(f"Y: {self.yellow_crystals}")
-            # print(f"G: {self.green_crystals}")
-            # print(f"M1: {self._card_status(self.merchant_card1)}")
-            # print(f"M2: {self._card_status(self.merchant_card2)}")
-            # print(f"M3: {self._card_status(self.merchant_card3)}")
-            # print(f"M4: {self._card_status(self.merchant_card4)}")
             
             # Ensure 5 golem cards are always shown in market display
             if len(self.market) < 5:

@@ -1,7 +1,7 @@
 import gymnasium
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
-from gymnasium_env.envs.century_golem_v2 import Actions
+from gymnasium_env.envs.century_v4 import Actions
 import sys
 sys.path.append("/Users/pongpradk/Documents/Codes/century/gymnasium_env/envs/century_v4.py")
 env = gymnasium.make('gymnasium_env/CenturyGolem-v4', render_mode='text')
@@ -26,7 +26,7 @@ def random(n_timesteps=10):
 def best_strategy(action_sequence):
     tot_reward = 0
     for a in action_sequence:
-        print("ACTION -", Actions(int(a)).name)
+        print(f"==== {Actions(int(a)).name} ====")
         state, reward, terminal, _, __ = env.step(a)
         # print(state)
         tot_reward += reward

@@ -85,25 +85,38 @@ class CenturyGolemEnv():
             self.player1.merchant_cards = [2 if card == 1 else card for card in self.player1.merchant_cards]
         # Get a merchant card
         elif 1 <= action <= 5:
-            self.player1.merchant_cards[action] = 2
+            card_id = action + 1 # e.g. action 1 = get M2
+            
+            # Check if card is in market
+            if self.merchant_deck[card_id] in self.merchant_market:
+                # Execute action
+                self.player1.merchant_cards[action] = 2
 
-            self.merchant_deck[action+1].owned = True # set taken card to owned
-            self.merchant_market.remove(self.merchant_deck[action+1]) # remove taken card from market
-            # Find remaining cards in deck
-            cards_in_deck = [
-                card for cid, card in self.merchant_deck.items()
-                if cid != 1 and not card.owned and card not in self.merchant_market
-            ]
-            # Draw random card from deck
-            if cards_in_deck:
-                new_card = random.choice(cards_in_deck)
-                self.merchant_market.append(new_card)   
+                self.merchant_deck[card_id].owned = True # set taken card to owned
+                self.merchant_market.remove(self.merchant_deck[card_id]) # remove taken card from market
+                # Find remaining cards in deck
+                cards_in_deck = [
+                    card for cid, card in self.merchant_deck.items()
+                    if cid != 1 and not card.owned and card not in self.merchant_market
+                ]
+                # Draw random card from deck
+                if cards_in_deck:
+                    new_card = random.choice(cards_in_deck)
+                    self.merchant_market.append(new_card)
+                
+                reward+= 2.0
+            else:
+                reward = -1.0
         # Use a merchant card
         elif 6 <= action <= 11:
-            card_id = action - 5
-            self.player1.yellow += self.merchant_deck[card_id].gain['yellow']
-            self.player1.green += self.merchant_deck[card_id].gain['green']
-            self.player1.merchant_cards[card_id-1] = 1 # set card status to owned but unplayable
+            card_id, card_idx = action - 5, action - 6 # e.g. action 10 = use M5 = card_id 5 = card_idx 4
+            if self.player1.merchant_cards[card_idx] == 2: # if card is playable
+                self.player1.yellow += self.merchant_deck[card_id].gain['yellow']
+                self.player1.green += self.merchant_deck[card_id].gain['green']
+                self.player1.merchant_cards[card_idx] = 1 # set card status to owned but unplayable
+                reward += 1
+            else:
+                reward -= 1
         
         self.render()
     
