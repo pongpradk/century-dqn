@@ -60,7 +60,7 @@ class CenturyGolemEnv(gym.Env):
             "player_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "player_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "merchant_cards": spaces.MultiDiscrete([3] * 6),
-            "merchant_market": spaces.MultiDiscrete([8, 8, 8, 8, 8]),  # Allow 7 as placeholder for empty
+            "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7]),  # Allow 7 as placeholder for empty
             "golem_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),  # Allow 5 as placeholder for empty
             "golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32)  # New: number of golem cards owned
         })
@@ -100,11 +100,11 @@ class CenturyGolemEnv(gym.Env):
 
         merchant_market_state = [card.card_id for card in self.merchant_market]
         while len(merchant_market_state) < 5:
-            merchant_market_state.append(7)  # Fill empty slots with 7
+            merchant_market_state.append(6)
         
         golem_market_state = [card.card_id for card in self.golem_market]
         while len(golem_market_state) < 5:
-            golem_market_state.append(6)
+            golem_market_state.append(5)
         
         return {
             "player_yellow": np.array([self.player1.yellow], dtype=np.int32),

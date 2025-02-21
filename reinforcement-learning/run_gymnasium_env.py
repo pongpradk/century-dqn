@@ -2,8 +2,6 @@ import gymnasium
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
 from gymnasium_env.envs.century_v4 import Actions
-import sys
-sys.path.append("/Users/pongpradk/Documents/Codes/century/gymnasium_env/envs/century_v4.py")
 env = gymnasium.make('gymnasium_env/CenturyGolem-v4', render_mode='text')
 # env = FlattenObservation(env)
 
@@ -34,7 +32,7 @@ def best_strategy(action_sequence):
         if terminal:
             break
     
-    print(tot_reward)
+    print(f"Reward: {tot_reward}")
     env.close()
 
 # best_strategy([1,2,3,4,5,6,7,8,9,10,11])
