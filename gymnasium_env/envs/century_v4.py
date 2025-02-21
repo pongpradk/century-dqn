@@ -8,7 +8,7 @@ class Player:
     
     def __init__(self, player_id):
         self.player_id = player_id
-        self.yellow = 0
+        self.yellow = 3
         self.green = 0
         # status of each merchant card for this player
         self.merchant_cards = [2] + [0] * 5 # 0 = not owned, 1 = owned but unplayable, 2 = owned and playable
