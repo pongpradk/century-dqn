@@ -56,18 +56,24 @@ class CenturyGolemEnv(gym.Env):
     metadata = {"render_modes": ["text"], "render_fps": 4}
     
     def __init__(self, render_mode=None):
-        # Observation space will be from the active player's perspective
+        # Open information
         self.observation_space = spaces.Dict({
-            "player_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
-            "player_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
-            "merchant_cards": spaces.MultiDiscrete([3] * 6),
-            "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7]),
-            "golem_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),
-            "golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),
+            "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7]),  # Allow 7 as placeholder for empty
+            "golem_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),  # Allow 5 as placeholder for empty
+            
+            "agent_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
+            "agent_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
+            "agent_merchant_cards": spaces.MultiDiscrete([3] * 6),
+            "agent_golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),  # New: number of golem cards owned
+            "agent_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
+            
             "opponent_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "opponent_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
+            "opponent_merchant_cards": spaces.MultiDiscrete([3] * 6),
             "opponent_golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),
-            "opponent_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32)
+            "opponent_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
+            
+            "current_player": spaces.Discrete(2)
         })
         
         self.action_space = spaces.Discrete(17)
@@ -95,20 +101,21 @@ class CenturyGolemEnv(gym.Env):
         
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
-        self.players = [Player(1), Player(2)]
-        self.current_player_idx = random.choice([0, 1]) # Randomly choose which player starts first
+        self.agent = Player(1)
+        self.opponent = Player(2)
+        self.current_player = random.choice([self.agent, self.opponent]) # Choose which player to play first
         
         self.steps_taken = 0
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
     
-    def _get_obs(self):
-        # Current player and opponent
-        current_player = self.players[self.current_player_idx]
-        opponent_player = self.players[1 - self.current_player_idx]
+    def _get_obs(self, player):
+        # Returns observation from the perspective of the player
+        agent = player
+        opponent = self.opponent if player == self.agent else self.agent
         
-        merchant_cards_state = np.array(self.player1.merchant_cards, dtype=np.int32)
+        merchant_cards_state = np.array(self.agent.merchant_cards, dtype=np.int32)
 
         merchant_market_state = [card.card_id for card in self.merchant_market]
         while len(merchant_market_state) < 5:
@@ -119,16 +126,22 @@ class CenturyGolemEnv(gym.Env):
             golem_market_state.append(5)
         
         return {
-            "player_yellow": np.array([current_player.yellow], dtype=np.int32),
-            "player_green": np.array([current_player.green], dtype=np.int32),
-            "merchant_cards": merchant_cards_state,
             "merchant_market": np.array(merchant_market_state, dtype=np.int32),
             "golem_market": np.array(golem_market_state, dtype=np.int32),
-            "golem_count": np.array([current_player.golem_count], dtype=np.int32),
-            "opponent_yellow": np.array([opponent_player.yellow], dtype=np.int32),
-            "opponent_green": np.array([opponent_player.green], dtype=np.int32),
-            "opponent_golem_count": np.array([opponent_player.golem_count], dtype=np.int32),
-            "opponent_points": np.array([opponent_player.points], dtype=np.int32)
+            
+            "agent_yellow": np.array([agent.yellow], dtype=np.int32),
+            "agent_green": np.array([agent.green], dtype=np.int32),
+            "agent_merchant_cards": merchant_cards_state,
+            "agent_golem_count": np.array([agent.golem_count], dtype=np.int32),
+            "agent_points": np.array([agent.points], dtype=np.int32),
+            
+            "opponent_yellow": np.array([opponent.yellow], dtype=np.int32),
+            "opponent_green": np.array([opponent.green], dtype=np.int32),
+            "opponent_merchant_cards": np.array(opponent.merchant_cards, dtype=np.int32),
+            "opponent_golem_count": np.array([opponent.golem_count], dtype=np.int32),
+            "opponent_points": np.array([opponent.points], dtype=np.int32),
+            
+            "current_player": int(self.current_player.player_id - 1)  # Convert 1/2 to 0/1
         }
     
     def _get_info(self):
@@ -147,18 +160,20 @@ class CenturyGolemEnv(gym.Env):
         
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
-        for player in self.players:
-            player.yellow = 3
+        self.agent = Player(1)
+        self.opponent = Player(2)
+        self.current_player = random.choice([self.agent, self.opponent]) # Choose which player to play first
+        
+        for player in (self.agent, self.opponent):
+            player.yellow = 0
             player.green = 0
             player.merchant_cards = [2] + [0] * 5
             player.golem_count = 0
             player.points = 0
         
-        self.current_player_idx = random.choice([0, 1]) # Randomly select who starts
-        
         self.steps_taken = 0
         
-        observation = self._get_obs()
+        observation = self._get_obs(self.current_player)
         info = self._get_info()
 
         if self.render_mode == "text":
@@ -170,14 +185,11 @@ class CenturyGolemEnv(gym.Env):
         reward = -0.5  # Base time-step penalty
         terminated = False
         
-        current_player = self.players[self.current_player_idx]
-        opponent_player = self.players[1 - self.current_player_idx]
-        
         self.steps_taken += 1
         
         # Rest
         if action == Actions.rest.value:
-            current_player.merchant_cards = [2 if card == 1 else card for card in current_player.merchant_cards]
+            self.current_player.merchant_cards = [2 if card == 1 else card for card in self.current_player.merchant_cards]
             reward += 0.3
             
         # Get a merchant card
@@ -187,7 +199,7 @@ class CenturyGolemEnv(gym.Env):
             # Check if card is in market
             if self.merchant_deck[card_id] in self.merchant_market:
                 # Execute action
-                self.player1.merchant_cards[action] = 2
+                self.current_player.merchant_cards[action] = 2
 
                 self.merchant_deck[card_id].owned = True # set taken card to owned
                 self.merchant_market.remove(self.merchant_deck[card_id]) # remove taken card from market
@@ -208,10 +220,10 @@ class CenturyGolemEnv(gym.Env):
         # Use a merchant card
         elif Actions.useM1.value <= action <= Actions.useM6.value:
             card_id, card_idx = action - 5, action - 6 # e.g. action 10 = use M5 = card_id 5 = card_idx 4
-            if self.player1.merchant_cards[card_idx] == 2: # if card is playable
-                self.player1.yellow += self.merchant_deck[card_id].gain['yellow']
-                self.player1.green += self.merchant_deck[card_id].gain['green']
-                self.player1.merchant_cards[card_idx] = 1 # set card status to owned but unplayable
+            if self.current_player.merchant_cards[card_idx] == 2: # if card is playable
+                self.current_player.yellow += self.merchant_deck[card_id].gain['yellow']
+                self.current_player.green += self.merchant_deck[card_id].gain['green']
+                self.current_player.merchant_cards[card_idx] = 1 # set card status to owned but unplayable
                 
                 # Give reward
                 reward += (0.5 * self.merchant_deck[card_id].gain['yellow'] + 1.0 * self.merchant_deck[card_id].gain['green'])
@@ -224,11 +236,11 @@ class CenturyGolemEnv(gym.Env):
             # Check if golem in market
             if self.golem_deck[card_id] in self.golem_market:
                 # Check if player has enough crystals
-                if (self.player1.yellow >= self.golem_deck[card_id].cost["yellow"] and self.player1.green >= self.golem_deck[card_id].cost["green"]):
-                    self.player1.yellow -= self.golem_deck[card_id].cost["yellow"]
-                    self.player1.green -= self.golem_deck[card_id].cost["green"]
-                    self.player1.golem_count += 1
-                    self.player1.points += self.golem_deck[card_id].points
+                if (self.current_player.yellow >= self.golem_deck[card_id].cost["yellow"] and self.current_player.green >= self.golem_deck[card_id].cost["green"]):
+                    self.current_player.yellow -= self.golem_deck[card_id].cost["yellow"]
+                    self.current_player.green -= self.golem_deck[card_id].cost["green"]
+                    self.current_player.golem_count += 1
+                    self.current_player.points += self.golem_deck[card_id].points
                     self.golem_deck[card_id].owned = True
                     
                     self.golem_market.remove(self.golem_deck[card_id]) # remove taken card from market
@@ -250,22 +262,22 @@ class CenturyGolemEnv(gym.Env):
 
         # Enforce 10-crystal limit before moving to next step
         def _enforce_crystal_limit(self):
-            total_crystals = self.player1.yellow + self.player1.green
+            total_crystals = self.current_player.yellow + self.current_player.green
             if total_crystals > 10:
                 excess = total_crystals - 10
                 yellow_lost = 0
                 green_lost = 0
 
                 # Remove excess starting with yellow, then green
-                if self.player1.yellow >= excess:
+                if self.current_player.yellow >= excess:
                     yellow_lost = excess
-                    self.player1.yellow -= excess
+                    self.current_player.yellow -= excess
                 else:
-                    yellow_lost = self.player1.yellow
-                    excess -= self.player1.yellow
-                    self.player1.yellow = 0
+                    yellow_lost = self.current_player.yellow
+                    excess -= self.current_player.yellow
+                    self.current_player.yellow = 0
                     green_lost = excess
-                    self.player1.green = max(0, self.player1.green - excess)
+                    self.current_player.green = max(0, self.current_player.green - excess)
 
                 # Apply penalty for losing crystals
                 penalty = - (0.5 * yellow_lost + 1.0 * green_lost)
@@ -278,14 +290,17 @@ class CenturyGolemEnv(gym.Env):
         reward += penalty  # Apply the penalty to the step reward
             
         # Check for terminating condition
-        if self.player1.golem_count >= 2:
+        if self.current_player.golem_count >= 2:
             terminated = True
             
             base_completion_reward = 100
             efficiency_bonus = max(0, 50 - self.steps_taken)
             reward += base_completion_reward + efficiency_bonus
         
-        observation = self._get_obs()
+        # Switch turn
+        self.current_player = self.agent if self.current_player == self.opponent else self.opponent
+        
+        observation = self._get_obs(self.current_player)
         info = self._get_info()
         
         if self.render_mode == "text":
@@ -295,17 +310,18 @@ class CenturyGolemEnv(gym.Env):
     
     def render(self):
         if self.render_mode == "text":
-            print(f"Y: {self.player1.yellow}")
-            print(f"G: {self.player1.green}")                
+            print(f"P{self.current_player.player_id}")
+            print(f"Y: {self.agent.yellow}")
+            print(f"G: {self.agent.green}")                
             status_map = {1: "unplayable", 2: "playable"}
-            for i, card_status in enumerate(self.player1.merchant_cards):
+            for i, card_status in enumerate(self.agent.merchant_cards):
                 if card_status == 0:
                     continue
                 print(f"M{i+1}: {status_map[card_status]}")
             print("MM: " + " | ".join([f"M{m.card_id}-{m.name}" for m in self.merchant_market]))
             print("GM: " + " | ".join([f"G{g.card_id}-{g.name}-{g.points}" for g in self.golem_market]))
-            print(f"GC: {self.player1.golem_count}")
-            print(f"P: {self.player1.points}")
+            print(f"GC: {self.agent.golem_count}")
+            print(f"P: {self.agent.points}")
             print("")     
     
     def close(self):

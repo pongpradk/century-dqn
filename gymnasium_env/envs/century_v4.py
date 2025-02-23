@@ -90,7 +90,7 @@ class CenturyGolemEnv(gym.Env):
         
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
-        self.players = Player(1)
+        self.player1 = Player(1)
         
         self.steps_taken = 0
         
