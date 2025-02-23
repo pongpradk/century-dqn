@@ -122,7 +122,7 @@ class CenturyGolemEnv(gym.Env):
         agent = player
         opponent = self.opponent if player == self.agent else self.agent
         
-        merchant_cards_state = np.array(self.agent.merchant_cards, dtype=np.int32)
+        merchant_cards_state = np.array(agent.merchant_cards, dtype=np.int32)
 
         merchant_market_state = [card.card_id for card in self.merchant_market]
         while len(merchant_market_state) < 5:
@@ -191,6 +191,31 @@ class CenturyGolemEnv(gym.Env):
             self.render()
 
         return observation, info
+    
+    # Enforce 10-crystal limit before moving to next step
+    def _enforce_crystal_limit(self):
+        total_crystals = self.current_player.yellow + self.current_player.green
+        if total_crystals > 10:
+            excess = total_crystals - 10
+            yellow_lost = 0
+            green_lost = 0
+
+            # Remove excess starting with yellow, then green
+            if self.current_player.yellow >= excess:
+                yellow_lost = excess
+                self.current_player.yellow -= excess
+            else:
+                yellow_lost = self.current_player.yellow
+                excess -= self.current_player.yellow
+                self.current_player.yellow = 0
+                green_lost = excess
+                self.current_player.green = max(0, self.current_player.green - excess)
+
+            # Apply penalty for losing crystals
+            penalty = - (0.5 * yellow_lost + 1.0 * green_lost)
+            return penalty
+        
+        return 0  # No penalty if no excess crystals
     
     def step(self, action):
         
@@ -277,33 +302,8 @@ class CenturyGolemEnv(gym.Env):
             else:
                 reward -= 1.0
 
-        # Enforce 10-crystal limit before moving to next step
-        def _enforce_crystal_limit(self):
-            total_crystals = self.current_player.yellow + self.current_player.green
-            if total_crystals > 10:
-                excess = total_crystals - 10
-                yellow_lost = 0
-                green_lost = 0
-
-                # Remove excess starting with yellow, then green
-                if self.current_player.yellow >= excess:
-                    yellow_lost = excess
-                    self.current_player.yellow -= excess
-                else:
-                    yellow_lost = self.current_player.yellow
-                    excess -= self.current_player.yellow
-                    self.current_player.yellow = 0
-                    green_lost = excess
-                    self.current_player.green = max(0, self.current_player.green - excess)
-
-                # Apply penalty for losing crystals
-                penalty = - (0.5 * yellow_lost + 1.0 * green_lost)
-                return penalty
-            
-            return 0  # No penalty if no excess crystals
-
         # Apply crystal limit before returning the observation
-        penalty = _enforce_crystal_limit(self)
+        penalty = self._enforce_crystal_limit()
         reward += penalty  # Apply the penalty to the step reward
         
         # Check if the endgame is triggered
@@ -314,9 +314,32 @@ class CenturyGolemEnv(gym.Env):
         if self.endgame_triggered and self.current_player != self.endgame_initiator:
             terminated = True
 
-            base_completion_reward = 100
-            efficiency_bonus = max(0, 50 - self.steps_taken)
-            reward += base_completion_reward + efficiency_bonus
+            # Calculate total points, including non-yellow crystals
+            def calculate_total_points(player):
+                crystal_points = player.green  # Assuming green crystals are worth 1 point
+                return player.points + crystal_points
+
+            # Calculate final points for both players
+            agent_final_points = calculate_total_points(self.agent)
+            opponent_final_points = calculate_total_points(self.opponent)
+
+            # Determine the winner
+            if agent_final_points > opponent_final_points:
+                winner = self.agent
+            elif opponent_final_points > agent_final_points:
+                winner = self.opponent
+            else:
+                winner = None  # It's a tie
+
+            # Assign rewards based on the winner
+            if winner == self.current_player:
+                base_completion_reward = 100
+                efficiency_bonus = max(0, 50 - self.steps_taken)
+                reward += base_completion_reward + efficiency_bonus
+            elif winner is None:
+                reward += 50  # Tie reward
+            else:
+                reward -= 50  # Losing player gets no bonus
         
         # Switch turn
         self.current_player, self.other_player = self.other_player, self.current_player
