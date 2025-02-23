@@ -311,17 +311,17 @@ class CenturyGolemEnv(gym.Env):
     def render(self):
         if self.render_mode == "text":
             print(f"P{self.current_player.player_id}")
-            print(f"Y: {self.agent.yellow}")
-            print(f"G: {self.agent.green}")                
+            print(f"Y: {self.current_player.yellow}")
+            print(f"G: {self.current_player.green}")                
             status_map = {1: "unplayable", 2: "playable"}
-            for i, card_status in enumerate(self.agent.merchant_cards):
+            for i, card_status in enumerate(self.current_player.merchant_cards):
                 if card_status == 0:
                     continue
                 print(f"M{i+1}: {status_map[card_status]}")
             print("MM: " + " | ".join([f"M{m.card_id}-{m.name}" for m in self.merchant_market]))
             print("GM: " + " | ".join([f"G{g.card_id}-{g.name}-{g.points}" for g in self.golem_market]))
-            print(f"GC: {self.agent.golem_count}")
-            print(f"P: {self.agent.points}")
+            print(f"GC: {self.current_player.golem_count}")
+            print(f"P: {self.current_player.points}")
             print("")     
     
     def close(self):
