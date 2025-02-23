@@ -8,7 +8,7 @@ class Player:
     
     def __init__(self, player_id):
         self.player_id = player_id
-        self.yellow = 0
+        self.yellow = 3
         self.green = 0
         # status of each merchant card for this player
         self.merchant_cards = [2] + [0] * 5 # 0 = not owned, 1 = owned but unplayable, 2 = owned and playable
@@ -101,10 +101,16 @@ class CenturyGolemEnv(gym.Env):
         
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
+        # Initialize players
         self.agent = Player(1)
         self.opponent = Player(2)
         self.current_player = random.choice([self.agent, self.opponent]) # Choose which player to play first
         self.other_player = self.agent if self.current_player == self.opponent else self.opponent
+        self.last_player = self.other_player
+        self.other_player.yellow += 1
+        
+        self.endgame_triggered = False  # Tracks if endgame was triggered
+        self.endgame_initiator = None   # The player who triggered the endgame
         
         self.steps_taken = 0
         
@@ -163,13 +169,18 @@ class CenturyGolemEnv(gym.Env):
         
         self.current_player = random.choice([self.agent, self.opponent]) # Choose which player to play first
         self.other_player = self.agent if self.current_player == self.opponent else self.opponent
+        self.last_player = self.other_player
         
+        # Reset players
+        self.current_player.yellow, self.other_player.yellow = 3, 4
         for player in (self.agent, self.opponent):
-            player.yellow = 0
             player.green = 0
             player.merchant_cards = [2] + [0] * 5
             player.golem_count = 0
             player.points = 0
+            
+        self.endgame_triggered = False  # Tracks if endgame was triggered
+        self.endgame_initiator = None   # The player who triggered the endgame
         
         self.steps_taken = 0
         
@@ -189,7 +200,9 @@ class CenturyGolemEnv(gym.Env):
         reward = -0.5  # Base time-step penalty
         terminated = False
         
-        self.steps_taken += 1
+        # Only increment step count for our training agent
+        if self.current_player == self.agent:
+            self.steps_taken += 1
         
         # Rest
         if action == Actions.rest.value:
@@ -292,19 +305,21 @@ class CenturyGolemEnv(gym.Env):
         # Apply crystal limit before returning the observation
         penalty = _enforce_crystal_limit(self)
         reward += penalty  # Apply the penalty to the step reward
-            
-        # Check for terminating condition
-        if self.current_player.golem_count >= 2:
+        
+        # Check if the endgame is triggered
+        if not self.endgame_triggered and self.current_player.golem_count >= 3:
+            self.endgame_triggered = True
+            self.endgame_initiator = self.current_player
+        # Check if this is the last turn (opponent of endgame initiator)
+        if self.endgame_triggered and self.current_player != self.endgame_initiator:
             terminated = True
-            
+
             base_completion_reward = 100
             efficiency_bonus = max(0, 50 - self.steps_taken)
             reward += base_completion_reward + efficiency_bonus
         
         # Switch turn
-        temp = self.current_player
-        self.current_player = self.agent if self.current_player == self.opponent else self.opponent
-        self.other_player = temp
+        self.current_player, self.other_player = self.other_player, self.current_player
         
         observation = self._get_obs(self.current_player)
         info = self._get_info()
@@ -326,7 +341,8 @@ class CenturyGolemEnv(gym.Env):
             for i, card_status in enumerate(self.agent.merchant_cards):
                 if card_status == 0:
                     continue
-                print(f"M{i+1}: {status_map[card_status]}")
+                card = self.merchant_deck.get(i + 1)  # Assuming card_id starts from 1
+                print(f"M{i+1}-{card.name}: {status_map[card_status]}")
             print(f"GC: {self.agent.golem_count}")
             print(f"P: {self.agent.points}")
             print("")
@@ -337,7 +353,8 @@ class CenturyGolemEnv(gym.Env):
             for i, card_status in enumerate(self.opponent.merchant_cards):
                 if card_status == 0:
                     continue
-                print(f"M{i+1}: {status_map[card_status]}")
+                card = self.merchant_deck.get(i + 1)  # Assuming card_id starts from 1
+                print(f"M{i+1}-{card.name}: {status_map[card_status]}")
             print(f"GC: {self.opponent.golem_count}")
             print(f"P: {self.opponent.points}")
             print("")
