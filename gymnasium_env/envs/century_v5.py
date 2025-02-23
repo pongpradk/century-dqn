@@ -8,7 +8,7 @@ class Player:
     
     def __init__(self, player_id):
         self.player_id = player_id
-        self.yellow = 3
+        self.yellow = 0
         self.green = 0
         # status of each merchant card for this player
         self.merchant_cards = [2] + [0] * 5 # 0 = not owned, 1 = owned but unplayable, 2 = owned and playable
@@ -104,6 +104,7 @@ class CenturyGolemEnv(gym.Env):
         self.agent = Player(1)
         self.opponent = Player(2)
         self.current_player = random.choice([self.agent, self.opponent]) # Choose which player to play first
+        self.other_player = self.agent if self.current_player == self.opponent else self.opponent
         
         self.steps_taken = 0
         
@@ -160,9 +161,8 @@ class CenturyGolemEnv(gym.Env):
         
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
-        self.agent = Player(1)
-        self.opponent = Player(2)
         self.current_player = random.choice([self.agent, self.opponent]) # Choose which player to play first
+        self.other_player = self.agent if self.current_player == self.opponent else self.opponent
         
         for player in (self.agent, self.opponent):
             player.yellow = 0
@@ -182,6 +182,10 @@ class CenturyGolemEnv(gym.Env):
         return observation, info
     
     def step(self, action):
+        
+        if self.render_mode == "text":
+            print(f"==== P{self.current_player.player_id} | {Actions(int(action)).name} ====\n")
+            
         reward = -0.5  # Base time-step penalty
         terminated = False
         
@@ -298,7 +302,9 @@ class CenturyGolemEnv(gym.Env):
             reward += base_completion_reward + efficiency_bonus
         
         # Switch turn
+        temp = self.current_player
         self.current_player = self.agent if self.current_player == self.opponent else self.opponent
+        self.other_player = temp
         
         observation = self._get_obs(self.current_player)
         info = self._get_info()
@@ -309,20 +315,32 @@ class CenturyGolemEnv(gym.Env):
         return observation, reward, terminated, False, info
     
     def render(self):
-        if self.render_mode == "text":
-            print(f"P{self.current_player.player_id}")
-            print(f"Y: {self.current_player.yellow}")
-            print(f"G: {self.current_player.green}")                
+        if self.render_mode == "text":               
+            print("MM: " + " | ".join([f"M{m.card_id}-{m.name}" for m in self.merchant_market]))
+            print("GM: " + " | ".join([f"G{g.card_id}-{g.name}-{g.points}" for g in self.golem_market]))
+            print("")
+            print(f"P{self.agent.player_id}")
+            print(f"Y: {self.agent.yellow}")
+            print(f"G: {self.agent.green}")
             status_map = {1: "unplayable", 2: "playable"}
-            for i, card_status in enumerate(self.current_player.merchant_cards):
+            for i, card_status in enumerate(self.agent.merchant_cards):
                 if card_status == 0:
                     continue
                 print(f"M{i+1}: {status_map[card_status]}")
-            print("MM: " + " | ".join([f"M{m.card_id}-{m.name}" for m in self.merchant_market]))
-            print("GM: " + " | ".join([f"G{g.card_id}-{g.name}-{g.points}" for g in self.golem_market]))
-            print(f"GC: {self.current_player.golem_count}")
-            print(f"P: {self.current_player.points}")
-            print("")     
+            print(f"GC: {self.agent.golem_count}")
+            print(f"P: {self.agent.points}")
+            print("")
+            print(f"P{self.opponent.player_id}")
+            print(f"Y: {self.opponent.yellow}")
+            print(f"G: {self.opponent.green}")
+            status_map = {1: "unplayable", 2: "playable"}
+            for i, card_status in enumerate(self.opponent.merchant_cards):
+                if card_status == 0:
+                    continue
+                print(f"M{i+1}: {status_map[card_status]}")
+            print(f"GC: {self.opponent.golem_count}")
+            print(f"P: {self.opponent.points}")
+            print("")
     
     def close(self):
         print("=== CLOSE ENVIRONMENT ===")

@@ -38,7 +38,7 @@ def best_strategy(action_sequence):
 def custom_actions(action_sequence):
     tot_reward = 0
     for a in action_sequence:
-        print(f"==== {Actions(int(a)).name} ====")
+        # print(f"==== {Actions(int(a)).name} ====")
         state, reward, terminal, _, __ = env.step(a)
         # print(state)
         tot_reward += reward
