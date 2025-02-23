@@ -56,13 +56,18 @@ class CenturyGolemEnv(gym.Env):
     metadata = {"render_modes": ["text"], "render_fps": 4}
     
     def __init__(self, render_mode=None):
+        # Observation space will be from the active player's perspective
         self.observation_space = spaces.Dict({
             "player_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "player_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "merchant_cards": spaces.MultiDiscrete([3] * 6),
-            "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7]),  # Allow 7 as placeholder for empty
-            "golem_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),  # Allow 5 as placeholder for empty
-            "golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32)  # New: number of golem cards owned
+            "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7]),
+            "golem_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),
+            "golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),
+            "opponent_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
+            "opponent_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
+            "opponent_golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),
+            "opponent_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32)
         })
         
         self.action_space = spaces.Discrete(17)
@@ -90,7 +95,8 @@ class CenturyGolemEnv(gym.Env):
         
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
-        self.players = Player(1)
+        self.players = [Player(1), Player(2)]
+        self.current_player_idx = random.choice([0, 1]) # Randomly choose which player starts first
         
         self.steps_taken = 0
         
@@ -98,6 +104,10 @@ class CenturyGolemEnv(gym.Env):
         self.render_mode = render_mode
     
     def _get_obs(self):
+        # Current player and opponent
+        current_player = self.players[self.current_player_idx]
+        opponent_player = self.players[1 - self.current_player_idx]
+        
         merchant_cards_state = np.array(self.player1.merchant_cards, dtype=np.int32)
 
         merchant_market_state = [card.card_id for card in self.merchant_market]
@@ -109,12 +119,16 @@ class CenturyGolemEnv(gym.Env):
             golem_market_state.append(5)
         
         return {
-            "player_yellow": np.array([self.player1.yellow], dtype=np.int32),
-            "player_green": np.array([self.player1.green], dtype=np.int32),
+            "player_yellow": np.array([current_player.yellow], dtype=np.int32),
+            "player_green": np.array([current_player.green], dtype=np.int32),
             "merchant_cards": merchant_cards_state,
             "merchant_market": np.array(merchant_market_state, dtype=np.int32),
             "golem_market": np.array(golem_market_state, dtype=np.int32),
-            "golem_count": np.array([self.player1.golem_count], dtype=np.int32)
+            "golem_count": np.array([current_player.golem_count], dtype=np.int32),
+            "opponent_yellow": np.array([opponent_player.yellow], dtype=np.int32),
+            "opponent_green": np.array([opponent_player.green], dtype=np.int32),
+            "opponent_golem_count": np.array([opponent_player.golem_count], dtype=np.int32),
+            "opponent_points": np.array([opponent_player.points], dtype=np.int32)
         }
     
     def _get_info(self):
@@ -133,11 +147,14 @@ class CenturyGolemEnv(gym.Env):
         
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
-        self.player1.yellow = 0
-        self.player1.green = 0
-        self.player1.merchant_cards = [2] + [0] * 5
-        self.player1.golem_count = 0
-        self.player1.points = 0
+        for player in self.players:
+            player.yellow = 3
+            player.green = 0
+            player.merchant_cards = [2] + [0] * 5
+            player.golem_count = 0
+            player.points = 0
+        
+        self.current_player_idx = random.choice([0, 1]) # Randomly select who starts
         
         self.steps_taken = 0
         
@@ -153,11 +170,14 @@ class CenturyGolemEnv(gym.Env):
         reward = -0.5  # Base time-step penalty
         terminated = False
         
+        current_player = self.players[self.current_player_idx]
+        opponent_player = self.players[1 - self.current_player_idx]
+        
         self.steps_taken += 1
         
         # Rest
         if action == Actions.rest.value:
-            self.player1.merchant_cards = [2 if card == 1 else card for card in self.player1.merchant_cards]
+            current_player.merchant_cards = [2 if card == 1 else card for card in current_player.merchant_cards]
             reward += 0.3
             
         # Get a merchant card
