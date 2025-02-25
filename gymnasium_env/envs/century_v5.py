@@ -73,7 +73,9 @@ class CenturyGolemEnv(gym.Env):
             "opponent_golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),
             "opponent_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
             
-            "current_player": spaces.Discrete(2)
+            "current_player": spaces.Discrete(2),
+            
+            "valid_actions": spaces.MultiBinary(self.action_space.n)
         })
         
         self.action_space = spaces.Discrete(17)
@@ -148,7 +150,9 @@ class CenturyGolemEnv(gym.Env):
             "opponent_golem_count": np.array([opponent.golem_count], dtype=np.int32),
             "opponent_points": np.array([opponent.points], dtype=np.int32),
             
-            "current_player": int(self.current_player.player_id - 1)  # Convert 1/2 to 0/1
+            "current_player": int(self.current_player.player_id - 1),  # Convert 1/2 to 0/1
+        
+            "valid_actions": self.get_valid_actions()
         }
     
     def _get_info(self):
@@ -192,6 +196,36 @@ class CenturyGolemEnv(gym.Env):
 
         return observation, info
     
+    def get_valid_actions(self):
+        """Returns a binary mask indicating valid actions."""
+        valid_actions = np.zeros(self.action_space.n, dtype=np.int32)
+
+        # Rest is always valid
+        valid_actions[Actions.rest.value] = 1
+
+        # Get merchant card actions
+        for i in range(Actions.getM2.value, Actions.getM6.value + 1):
+            card_id = i + 1
+            if self.merchant_deck[card_id] in self.merchant_market: # if card in market
+                valid_actions[i] = 1
+
+        # Use merchant card actions
+        for i in range(Actions.useM1.value, Actions.useM6.value + 1):
+            card_idx = i - 6
+            if self.current_player.merchant_cards[card_idx] == 2:  # if card is playable
+                valid_actions[i] = 1
+
+        # Get golem card actions
+        for i in range(Actions.getG1.value, Actions.getG5.value + 1):
+            card_id = i - Actions.getG1.value + 1
+            golem_card = self.golem_deck.get(card_id)
+            if (golem_card in self.golem_market and
+                self.current_player.yellow >= golem_card.cost["yellow"] and
+                self.current_player.green >= golem_card.cost["green"]):
+                valid_actions[i] = 1
+
+        return valid_actions
+        
     # Enforce 10-crystal limit before moving to next step
     def _enforce_crystal_limit(self):
         total_crystals = self.current_player.yellow + self.current_player.green
