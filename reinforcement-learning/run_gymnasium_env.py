@@ -70,6 +70,8 @@ def play_against_random(turns=5):
         if state['current_player'] == 1:
             action = env.action_space.sample()
             state, reward, terminal, _, __ = env.step(action)
+            if terminal:
+                tot_reward += reward
         
         if terminal:
             break

@@ -217,6 +217,11 @@ class CenturyGolemEnv(gym.Env):
         
         return 0  # No penalty if no excess crystals
     
+    def calculate_total_points(self, player):
+        """Calculates total points for a player, including non-yellow crystals."""
+        crystal_points = player.green  # Assuming green crystals are worth 1 point
+        return player.points + crystal_points
+    
     def step(self, action):
         
         if self.render_mode == "text":
@@ -270,7 +275,7 @@ class CenturyGolemEnv(gym.Env):
                 # Give reward
                 reward += (0.5 * self.merchant_deck[card_id].gain['yellow'] + 1.0 * self.merchant_deck[card_id].gain['green'])
             else:
-                reward -= 1.0
+                reward -= 0.5
         
         # Get a golem card
         elif Actions.getG1.value <= action <= Actions.getG5.value:
@@ -314,32 +319,23 @@ class CenturyGolemEnv(gym.Env):
         if self.endgame_triggered and self.current_player != self.endgame_initiator:
             terminated = True
 
-            # Calculate total points, including non-yellow crystals
-            def calculate_total_points(player):
-                crystal_points = player.green  # Assuming green crystals are worth 1 point
-                return player.points + crystal_points
-
             # Calculate final points for both players
-            agent_final_points = calculate_total_points(self.agent)
-            opponent_final_points = calculate_total_points(self.opponent)
-
-            # Determine the winner
+            agent_final_points = self.calculate_total_points(self.agent)
+            opponent_final_points = self.calculate_total_points(self.opponent)
+            
+            # If not agent's turn, the reward is reset, before calculation
+            if self.current_player != self.agent:
+                reward = 0
+            
+            # Determine winner and assign reward
             if agent_final_points > opponent_final_points:
-                winner = self.agent
-            elif opponent_final_points > agent_final_points:
-                winner = self.opponent
-            else:
-                winner = None  # It's a tie
-
-            # Assign rewards based on the winner
-            if winner == self.current_player:
                 base_completion_reward = 100
                 efficiency_bonus = max(0, 50 - self.steps_taken)
                 reward += base_completion_reward + efficiency_bonus
-            elif winner is None:
+            elif agent_final_points == opponent_final_points:
                 reward += 50  # Tie reward
             else:
-                reward -= 50  # Losing player gets no bonus
+                reward -= 50  # Penalty for losing                
         
         # Switch turn
         self.current_player, self.other_player = self.other_player, self.current_player
