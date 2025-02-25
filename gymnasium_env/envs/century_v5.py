@@ -274,11 +274,11 @@ class CenturyGolemEnv(gym.Env):
         # Only increment step count for our training agent
         if self.current_player == self.agent:
             self.steps_taken += 1
+            # OR reward -= 0.2
         
         # Rest
         if action == Actions.rest.value:
             self.current_player.merchant_cards = [2 if card == 1 else card for card in self.current_player.merchant_cards]
-            reward += 0.3
             
         # Get a merchant card
         elif Actions.getM2.value <= action <= Actions.getM6.value:
@@ -301,7 +301,7 @@ class CenturyGolemEnv(gym.Env):
                     new_card = random.choice(cards_in_deck)
                     self.merchant_market.append(new_card)
                 
-                reward += 1.0 + (0.2 * self.merchant_deck[card_id].gain['yellow']) + (0.4 * self.merchant_deck[card_id].gain['green'])
+                reward += 2.0 + (0.3 * self.merchant_deck[card_id].gain['yellow']) + (0.5 * self.merchant_deck[card_id].gain['green'])
             else:
                 reward -= 1.0
                 
@@ -341,8 +341,15 @@ class CenturyGolemEnv(gym.Env):
                     if cards_in_deck:
                         new_card = random.choice(cards_in_deck)
                         self.golem_market.append(new_card)
-                        
-                    reward += 10 + self.golem_deck[card_id].points
+                    
+                    # Reward for getting the golem card
+                    rarity_multiplier = 1.0 + (self.golem_deck[card_id].points / 10)
+                    reward += (10 + self.golem_deck[card_id].points) * rarity_multiplier
+                    
+                    # Reward for blocking opponent
+                    if self.other_player.yellow >= self.golem_deck[card_id].cost["yellow"] and self.other_player.green >= self.golem_deck[card_id].cost["green"]:
+                        reward += 3.0
+                    
                 else:   
                     reward -= 1.0
             else:
@@ -368,15 +375,14 @@ class CenturyGolemEnv(gym.Env):
             if self.current_player != self.agent:
                 reward = 0
             
-            # Determine winner and assign reward
-            if agent_final_points > opponent_final_points:
-                base_completion_reward = 100
-                efficiency_bonus = max(0, 50 - self.steps_taken)
-                reward += base_completion_reward + efficiency_bonus
-            elif agent_final_points == opponent_final_points:
-                reward += 50  # Tie reward
+            # Endgame reward
+            score_diff = agent_final_points - opponent_final_points
+            if score_diff > 0:
+                reward += 100 + (score_diff * 2)  # Bigger wins yield higher rewards
+            elif score_diff == 0:
+                reward += 50  # Tie
             else:
-                reward -= 50  # Penalty for losing                
+                reward -= 50  # Loss
         
         # Switch turn
         self.current_player, self.other_player = self.other_player, self.current_player
