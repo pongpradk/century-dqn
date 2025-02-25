@@ -12,6 +12,13 @@ from keras.layers import Dense
 from keras.models import Sequential
 from keras.optimizers import Adam
 
+class RandomAgent:
+    def __init__(self, action_size):
+        self.action_size = action_size
+
+    def pick_random_action(self, valid_actions):
+        valid_indices = np.where(valid_actions == 1)[0]
+        return np.random.choice(valid_indices)
 
 class DQNAgent:
     def __init__(self, state_size, action_size):
@@ -163,9 +170,10 @@ if __name__ == '__main__':
     action_size = env.action_space.n
 
     dqn_agent = DQNAgent(state_size, action_size)
+    random_agent = RandomAgent(action_size)
     
     # Load Agent and Metadata if continuing training
-    continue_training = True  # Set to False if starting fresh
+    continue_training = False  # Set to False if starting fresh
     if continue_training:
         dqn_agent.load_agent('checkpoint')  # Load saved agent
         metadata = load_training_metadata('training_metadata.json')
@@ -188,6 +196,7 @@ if __name__ == '__main__':
             # state, _ = env.reset()
             state, info = env.reset()
             valid_actions = info["valid_actions"]
+            current_player = info['current_player']
 
             print(f'\nTraining on EPISODE {ep+1} with epsilon {dqn_agent.epsilon}')
             start = time.time()
@@ -199,26 +208,44 @@ if __name__ == '__main__':
                 # Update Target Network every {dqn_agent.update_rate} timesteps
                 if time_step % dqn_agent.update_rate == 0:
                     dqn_agent.update_target_network()
+                
+                if current_player == 0:
+                    print("DQNAgent's turn")
+                    # action = dqn_agent.pick_epsilon_greedy_action(state)  # Select action with ε-greedy policy
+                    # Select action using valid actions
+                    action = dqn_agent.pick_epsilon_greedy_action(state, valid_actions)
+                    next_state, reward, terminal, _, info = env.step(action)  # Perform action on environment
 
-                # action = dqn_agent.pick_epsilon_greedy_action(state)  # Select action with ε-greedy policy
-                # Select action using valid actions
-                action = dqn_agent.pick_epsilon_greedy_action(state, valid_actions)
-                next_state, reward, terminal, _, next_info = env.step(action)  # Perform action on environment
-                next_valid_actions = next_info["valid_actions"]
-                dqn_agent.save_experience(state, action, reward, next_state, terminal)  # Save experience in Replay Buffer
+                    agent_state = state
+                    agent_action = action
+                    # Update current state to next state and total reward
+                    state = next_state
+                    tot_reward += reward
+                    
+                    if terminal:
+                        tot_reward += reward
+                        dqn_agent.save_experience(state, action, reward, next_state, terminal) # Save experience in Replay Buffer
+                    
+                    # Train the Main NN when ReplayBuffer has enough experiences to fill a batch
+                    if len(dqn_agent.replay_buffer) > batch_size:
+                        dqn_agent.train(batch_size)
+                
+                if current_player == 1:
+                    print("RandomAgent's turn")
+                    # Random Agent's turn
+                    action = random_agent.pick_random_action(valid_actions)
+                    next_state, reward, terminal, _, info = env.step(action)
 
-                # Update current state to next state and total reward
-                state = next_state
-                valid_actions = next_valid_actions
-                tot_reward += reward
+                    state = next_state
+                    
+                    if terminal:
+                        tot_reward += reward
+                    
+                    dqn_agent.save_experience(agent_state, agent_action, reward, next_state, terminal) # Save experience in Replay Buffer
 
                 if terminal:
                     print('Episode: ', ep+1, ',' ' terminated with Reward ', tot_reward)
                     break
-
-                # Train the Main NN when ReplayBuffer has enough experiences to fill a batch
-                if len(dqn_agent.replay_buffer) > batch_size:
-                    dqn_agent.train(batch_size)
 
             rewards.append(tot_reward)
             epsilon_values.append(dqn_agent.epsilon)

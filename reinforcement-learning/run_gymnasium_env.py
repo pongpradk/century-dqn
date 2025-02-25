@@ -5,6 +5,7 @@ from gymnasium.wrappers import FlattenObservation
 # print(f"==== {Actions(int(a)).name} ====")
 env = gymnasium.make('gymnasium_env/CenturyGolem-v5', render_mode='text')
 # env = FlattenObservation(env)
+import numpy as np
 
 # state, _ = env.reset()
 # done = False
@@ -61,17 +62,48 @@ def turn_based(turns=10):
             break
 
 def play_against_random(turns=5):
-    state, _ = env.reset()
+    state, info = env.reset()
     tot_reward = 0
     
     for _ in range(turns):
-        if state['current_player'] == 0:
+        # if state['current_player'] == 0:
+        if info['current_player'] == 0:
+            print(info['valid_actions'])
             action = int(input("Enter action: "))
-            state, reward, terminal, _, __ = env.step(action)
+            state, reward, terminal, _, info = env.step(action)
             tot_reward += reward
-        if state['current_player'] == 1:
-            action = env.action_space.sample()
-            state, reward, terminal, _, __ = env.step(action)
+        # if state['current_player'] == 1:
+        if info['current_player'] == 1:
+            print(info['valid_actions'])
+            valid_mask = info["valid_actions"]
+            valid_indices = np.where(valid_mask == 1)[0]  # Get indices of valid actions
+            action = np.random.choice(valid_indices)
+            # action = env.action_space.sample()
+            state, reward, terminal, _, info = env.step(action)
+            if terminal:
+                tot_reward += reward
+        
+        if terminal:
+            break
+    
+    print(f"Reward: {tot_reward}")
+    env.close()
+    
+def dqn_vs_random(turns=5):
+    info = env.reset()
+    tot_reward = 0
+    
+    for _ in range(turns):
+        if info['current_player'] == 0:
+            action = int(input("Enter action: "))
+            state, reward, terminal, _, info = env.step(action)
+            tot_reward += reward
+        if info['current_player'] == 1:
+            valid_mask = info["valid_actions"]
+            valid_indices = np.where(valid_mask == 1)[0]  # Get indices of valid actions
+            action = np.random.choice(valid_indices)
+            # action = env.action_space.sample()
+            state, reward, terminal, _, info = env.step(action)
             if terminal:
                 tot_reward += reward
         
@@ -86,5 +118,5 @@ def play_against_random(turns=5):
 # custom_actions([1,2,3,4,5]) # get all merchant cards
 # custom_actions([5,0,11,0,12]) # get one golem
 # input_action()
-random(6)
-# play_against_random(50)
+# random(6)
+play_against_random(50)

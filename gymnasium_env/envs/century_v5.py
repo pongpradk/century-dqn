@@ -195,6 +195,7 @@ class CenturyGolemEnv(gym.Env):
         # Generate valid actions for the starting state
         valid_actions = self._get_valid_actions(self.current_player)
         info["valid_actions"] = valid_actions
+        info["current_player"] = int(self.current_player.player_id - 1)
 
         if self.render_mode == "text":
             self.render()
@@ -386,6 +387,7 @@ class CenturyGolemEnv(gym.Env):
         # Generate valid actions after the step
         valid_actions = self._get_valid_actions(self.current_player)
         info["valid_actions"] = valid_actions
+        info["current_player"] = int(self.current_player.player_id - 1)
         
         if self.render_mode == "text":
             self.render()
