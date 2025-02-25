@@ -195,8 +195,6 @@ if __name__ == '__main__':
 
             # state, _ = env.reset()
             state, info = env.reset()
-            valid_actions = info["valid_actions"]
-            current_player = info['current_player']
 
             print(f'\nTraining on EPISODE {ep+1} with epsilon {dqn_agent.epsilon}')
             start = time.time()
@@ -209,39 +207,30 @@ if __name__ == '__main__':
                 if time_step % dqn_agent.update_rate == 0:
                     dqn_agent.update_target_network()
                 
-                if current_player == 0:
+                if info["current_player"] == 0:
                     print("DQNAgent's turn")
-                    # action = dqn_agent.pick_epsilon_greedy_action(state)  # Select action with ε-greedy policy
                     # Select action using valid actions
-                    action = dqn_agent.pick_epsilon_greedy_action(state, valid_actions)
+                    action = dqn_agent.pick_epsilon_greedy_action(state, info["valid_actions"]) # Select action with ε-greedy policy
                     next_state, reward, terminal, _, info = env.step(action)  # Perform action on environment
-
-                    agent_state = state
-                    agent_action = action
-                    # Update current state to next state and total reward
-                    state = next_state
-                    tot_reward += reward
+                    current_player = info["current_player"] # Switch player
                     
-                    if terminal:
-                        tot_reward += reward
-                        dqn_agent.save_experience(state, action, reward, next_state, terminal) # Save experience in Replay Buffer
+                    if not terminal and info["current_player"] == 1:
+                        print("RandomAgent's turn")
+                        opponent_action = random_agent.pick_random_action(info["valid_actions"])
+                        next_state_after_opponent, _, terminal, _, info = env.step(opponent_action) # ignore reward from opponent's turn
+                        
+                        dqn_agent.save_experience(state, action, reward, next_state_after_opponent, terminal) # Save experience in Replay Buffer
+                        
+                        # Update state for the next DQN turn
+                        state = next_state_after_opponent
+                    else:
+                        dqn_agent.save_experience(state, action, reward, next_state, terminal)
+                    
+                    tot_reward += reward  # Only DQNAgent's reward is accumulated
                     
                     # Train the Main NN when ReplayBuffer has enough experiences to fill a batch
                     if len(dqn_agent.replay_buffer) > batch_size:
                         dqn_agent.train(batch_size)
-                
-                if current_player == 1:
-                    print("RandomAgent's turn")
-                    # Random Agent's turn
-                    action = random_agent.pick_random_action(valid_actions)
-                    next_state, reward, terminal, _, info = env.step(action)
-
-                    state = next_state
-                    
-                    if terminal:
-                        tot_reward += reward
-                    
-                    dqn_agent.save_experience(agent_state, agent_action, reward, next_state, terminal) # Save experience in Replay Buffer
 
                 if terminal:
                     print('Episode: ', ep+1, ',' ' terminated with Reward ', tot_reward)
