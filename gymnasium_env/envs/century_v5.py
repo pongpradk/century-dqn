@@ -266,7 +266,7 @@ class CenturyGolemEnv(gym.Env):
     def step(self, action):
         
         if self.render_mode == "text":
-            print(f"==== P{self.current_player.player_id} | {Actions(int(action)).name} ====\n")
+            print(f"==== DQN | {Actions(int(action)).name} ====\n") if self.current_player.player_id == 1 else print(f"==== Random | {Actions(int(action)).name} ====\n")
             
         reward = -0.5  # Base time-step penalty
         terminated = False

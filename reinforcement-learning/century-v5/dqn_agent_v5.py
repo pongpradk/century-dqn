@@ -173,7 +173,7 @@ if __name__ == '__main__':
     random_agent = RandomAgent(action_size)
     
     # Load Agent and Metadata if continuing training
-    continue_training = False  # Set to False if starting fresh
+    continue_training = True  # Set to False if starting fresh
     if continue_training:
         dqn_agent.load_agent('checkpoint')  # Load saved agent
         metadata = load_training_metadata('training_metadata.json')
@@ -207,15 +207,18 @@ if __name__ == '__main__':
                 if time_step % dqn_agent.update_rate == 0:
                     dqn_agent.update_target_network()
                 
+                # if opponent starts first
+                if info['current_player'] == 1:
+                    opponent_action = random_agent.pick_random_action(info["valid_actions"])
+                    next_state, _, terminal, _, info = env.step(opponent_action)
+                    state = next_state
+                
                 if info["current_player"] == 0:
-                    print("DQNAgent's turn")
                     # Select action using valid actions
                     action = dqn_agent.pick_epsilon_greedy_action(state, info["valid_actions"]) # Select action with ε-greedy policy
                     next_state, reward, terminal, _, info = env.step(action)  # Perform action on environment
-                    current_player = info["current_player"] # Switch player
                     
                     if not terminal and info["current_player"] == 1:
-                        print("RandomAgent's turn")
                         opponent_action = random_agent.pick_random_action(info["valid_actions"])
                         next_state_after_opponent, _, terminal, _, info = env.step(opponent_action) # ignore reward from opponent's turn
                         
