@@ -11,6 +11,8 @@ env = gymnasium.make('gymnasium_env/CenturyGolem-v5', render_mode='text')
 
 
 def random(n_timesteps=10):
+    state, _ = env.reset()
+    
     for _ in range(n_timesteps):
         # Pick random action
         action = env.action_space.sample()
@@ -84,5 +86,5 @@ def play_against_random(turns=5):
 # custom_actions([1,2,3,4,5]) # get all merchant cards
 # custom_actions([5,0,11,0,12]) # get one golem
 # input_action()
-# random(4)
-play_against_random(50)
+random(6)
+# play_against_random(50)

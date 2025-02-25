@@ -56,6 +56,9 @@ class CenturyGolemEnv(gym.Env):
     metadata = {"render_modes": ["text"], "render_fps": 4}
     
     def __init__(self, render_mode=None):
+        
+        self.action_space = spaces.Discrete(17)
+        
         # Open information
         self.observation_space = spaces.Dict({
             "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7]),  # Allow 7 as placeholder for empty
@@ -77,8 +80,6 @@ class CenturyGolemEnv(gym.Env):
             
             "valid_actions": spaces.MultiBinary(self.action_space.n)
         })
-        
-        self.action_space = spaces.Discrete(17)
         
         self.merchant_deck = {
             1: MerchantCard(1, "Y2", "crystal", {"yellow": 2, "green": 0}, None, True),
@@ -152,7 +153,7 @@ class CenturyGolemEnv(gym.Env):
             
             "current_player": int(self.current_player.player_id - 1),  # Convert 1/2 to 0/1
         
-            "valid_actions": self.get_valid_actions()
+            "valid_actions": self._get_valid_actions(player)
         }
     
     def _get_info(self):
@@ -190,14 +191,18 @@ class CenturyGolemEnv(gym.Env):
         
         observation = self._get_obs(self.current_player)
         info = self._get_info()
+        
+        # Generate valid actions for the starting state
+        valid_actions = self._get_valid_actions(self.current_player)
+        info["valid_actions"] = valid_actions
 
         if self.render_mode == "text":
             self.render()
 
         return observation, info
     
-    def get_valid_actions(self):
-        """Returns a binary mask indicating valid actions."""
+    def _get_valid_actions(self, player):
+        """Returns a binary mask indicating valid actions for the given player."""
         valid_actions = np.zeros(self.action_space.n, dtype=np.int32)
 
         # Rest is always valid
@@ -206,23 +211,24 @@ class CenturyGolemEnv(gym.Env):
         # Get merchant card actions
         for i in range(Actions.getM2.value, Actions.getM6.value + 1):
             card_id = i + 1
-            if self.merchant_deck[card_id] in self.merchant_market: # if card in market
+            if self.merchant_deck[card_id] in self.merchant_market:
                 valid_actions[i] = 1
 
         # Use merchant card actions
         for i in range(Actions.useM1.value, Actions.useM6.value + 1):
             card_idx = i - 6
-            if self.current_player.merchant_cards[card_idx] == 2:  # if card is playable
+            if player.merchant_cards[card_idx] == 2:  # Playable
                 valid_actions[i] = 1
 
         # Get golem card actions
         for i in range(Actions.getG1.value, Actions.getG5.value + 1):
             card_id = i - Actions.getG1.value + 1
             golem_card = self.golem_deck.get(card_id)
-            if (golem_card in self.golem_market and
-                self.current_player.yellow >= golem_card.cost["yellow"] and
-                self.current_player.green >= golem_card.cost["green"]):
-                valid_actions[i] = 1
+            if golem_card and golem_card.cost:
+                if (golem_card in self.golem_market and
+                    player.yellow >= golem_card.cost.get("yellow", 0) and
+                    player.green >= golem_card.cost.get("green", 0)):
+                    valid_actions[i] = 1
 
         return valid_actions
         
@@ -376,6 +382,10 @@ class CenturyGolemEnv(gym.Env):
         
         observation = self._get_obs(self.current_player)
         info = self._get_info()
+        
+        # Generate valid actions after the step
+        valid_actions = self._get_valid_actions(self.current_player)
+        info["valid_actions"] = valid_actions
         
         if self.render_mode == "text":
             self.render()
