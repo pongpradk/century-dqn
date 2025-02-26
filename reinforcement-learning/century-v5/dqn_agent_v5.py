@@ -194,7 +194,7 @@ if __name__ == '__main__':
     # Define number of episodes, timesteps per episode and batch size
     num_episodes = 10000
     num_timesteps = 200
-    batch_size = 128
+    batch_size = 256
     time_step = metadata['time_step']
     rewards = metadata['rewards']
     epsilon_values = metadata['epsilon_values']

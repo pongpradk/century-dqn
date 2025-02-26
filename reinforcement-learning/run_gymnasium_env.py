@@ -1,9 +1,7 @@
 import gymnasium
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
-# from gymnasium_env.envs.century_v4 import Actions
-# print(f"==== {Actions(int(a)).name} ====")
-env = gymnasium.make('gymnasium_env/CenturyGolem-v5', render_mode='text')
+env = gymnasium.make('gymnasium_env/CenturyGolem-v6', render_mode='text')
 # env = FlattenObservation(env)
 import numpy as np
 

@@ -221,9 +221,24 @@ class CenturyGolemEnv(gym.Env):
 
         # Use merchant card actions
         for i in range(Actions.useM1.value, Actions.useM6.value + 1):
-            card_idx = i - 6
-            if player.merchant_cards[card_idx] == 2:  # Playable
-                valid_actions[i] = 1
+            card_idx = i - Actions.useM1.value
+
+            if player.merchant_cards[card_idx] == 2:  # If playable
+                    card_id = i - Actions.useM1.value + 1
+                    card = self.merchant_deck[card_id]
+
+                    # Check if using the card results in waste
+                    new_yellow = player.yellow + card.gain.get("yellow", 0)
+                    new_green = player.green + card.gain.get("green", 0)
+                    total_crystals = new_yellow + new_green
+
+                    if total_crystals > 10:  
+                        # Check if conversion is strategic (e.g., sacrificing yellow for green)
+                        excess = total_crystals - 10
+                        if player.yellow >= excess and "green" in card.gain:  
+                            valid_actions[i] = 1  # Allow if it's a strategic conversion
+                    else:
+                        valid_actions[i] = 1  # Always allow if no crystals are wasted
 
         # Get golem card actions
         for i in range(Actions.getG1.value, Actions.getG5.value + 1):
@@ -277,10 +292,13 @@ class CenturyGolemEnv(gym.Env):
         
         combo_bonus = 0
         
+        if self.current_player == self.agent:
+            self.steps_taken += 1
+        
         # Rest
         if action == Actions.rest.value:
             self.current_player.merchant_cards = [2 if card == 1 else card for card in self.current_player.merchant_cards]
-            reward -= 3.0
+            reward -= 1.0
             self.combo_length = 0
             
         # Get a merchant card
@@ -313,9 +331,24 @@ class CenturyGolemEnv(gym.Env):
         elif Actions.useM1.value <= action <= Actions.useM6.value:
             card_id, card_idx = action - 5, action - 6 # e.g. action 10 = use M5 = card_id 5 = card_idx 4
             if self.current_player.merchant_cards[card_idx] == 2: # if card is playable
+                
+                initial_yellow = self.current_player.yellow
+                initial_green = self.current_player.green
+                
                 self.current_player.yellow += self.merchant_deck[card_id].gain['yellow']
                 self.current_player.green += self.merchant_deck[card_id].gain['green']
                 self.current_player.merchant_cards[card_idx] = 1 # set card status to owned but unplayable
+                
+                # Compute the excess
+                total_crystals = self.current_player.yellow + self.current_player.green
+                if total_crystals > 10:
+                    wasted_crystals = total_crystals - 10
+                    if wasted_crystals > 0:
+                        reward -= wasted_crystals * 2  # Higher penalty for waste
+                else:
+                    # Reward for smart conversions
+                    if initial_yellow > self.current_player.yellow and self.current_player.green > initial_green:
+                        reward += 2  # Encourages trading yellow for green
                 
                 # Base reward for using merchant card
                 reward += (0.5 * self.merchant_deck[card_id].gain['yellow'] + 1.0 * self.merchant_deck[card_id].gain['green'])
@@ -323,7 +356,7 @@ class CenturyGolemEnv(gym.Env):
                 # Reward for chaining usage of merchant cards
                 self.combo_length += 1
                 if self.combo_length > 1:
-                    combo_bonus = (self.combo_length - 1) * 0.5  # Example: +0.5 for every extra chained card
+                    combo_bonus = max(2, 5 - np.log(self.steps_taken + 1))
                     reward += combo_bonus    
             else:
                 reward -= 0.5
@@ -336,6 +369,10 @@ class CenturyGolemEnv(gym.Env):
             if self.golem_deck[card_id] in self.golem_market:
                 # Check if player has enough crystals
                 if (self.current_player.yellow >= self.golem_deck[card_id].cost["yellow"] and self.current_player.green >= self.golem_deck[card_id].cost["green"]):
+                    
+                    if self.current_player.yellow + self.current_player.green >= 8:
+                        reward += 10  # Incentivize golem purchase when rich in crystals
+                    
                     self.current_player.yellow -= self.golem_deck[card_id].cost["yellow"]
                     self.current_player.green -= self.golem_deck[card_id].cost["green"]
                     self.current_player.golem_count += 1
@@ -359,7 +396,7 @@ class CenturyGolemEnv(gym.Env):
                     
                     # Reward for blocking opponent
                     if self.other_player.yellow >= self.golem_deck[card_id].cost["yellow"] and self.other_player.green >= self.golem_deck[card_id].cost["green"]:
-                        reward += 3.0
+                        reward += 5.0
                     
                 else:   
                     reward -= 1.0
@@ -390,7 +427,7 @@ class CenturyGolemEnv(gym.Env):
             # Endgame reward
             score_diff = agent_final_points - opponent_final_points
             if score_diff > 0:
-                reward += 100 + (score_diff * 2)  # Bigger wins yield higher rewards
+                reward += 100 + (abs(score_diff) ** 1.2) * np.sign(score_diff) - (self.steps_taken * 0.1)
             elif score_diff == 0:
                 reward += 50  # Tie
             else:

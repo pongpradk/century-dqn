@@ -74,7 +74,7 @@ if __name__ == '__main__':
     random_agent = RandomAgent(action_size)
 
     total_reward = 0
-    max_timesteps = 50
+    max_timesteps = 75
     
     for t in range(max_timesteps):
         # Check which agent's turn it is
