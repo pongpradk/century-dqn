@@ -32,10 +32,10 @@ class DQNAgent:
         # Set algorithm hyperparameters
         self.gamma = 0.99
         self.epsilon = 1.0
-        self.epsilon_min = 0.1
+        self.epsilon_min = 0.05
         self.epsilon_decay = 0.997
-        self.learning_rate = 0.0001
-        self.update_rate = 500
+        self.learning_rate = 0.00005
+        self.update_rate = 200
 
         # Create both Main and Target Neural Networks
         self.main_network = self.create_nn()
@@ -78,6 +78,15 @@ class DQNAgent:
         return state_batch, action_batch, reward_batch, next_state_batch, terminal_batch
 
     def pick_epsilon_greedy_action(self, state, valid_actions):
+        print(valid_actions)
+        
+        # if random.uniform(0, 1) < self.epsilon:
+        #     return np.random.randint(self.action_size)
+        
+        # state = state.reshape((1, self.state_size))
+        # q_values = self.main_network.predict(state, verbose=0)
+        
+        # return np.argmax(q_values[0])
 
         # Pick random action with probability ε
         if random.uniform(0, 1) < self.epsilon:
@@ -91,10 +100,13 @@ class DQNAgent:
         q_values = self.main_network.predict(state, verbose=0)[0]
         
         # Mask invalid actions by setting their Q-values to -infinity
-        masked_q_values = np.where(valid_actions, q_values, -np.inf)
+        masked_q_values = np.where(valid_actions.astype(bool), q_values, -np.inf)
         
         # return np.argmax(q_values[0])
         # Select the action with the highest masked Q-value
+        if np.all(np.isneginf(masked_q_values)):
+            valid_indices = np.where(valid_actions == 1)[0]
+            return np.random.choice(valid_indices)  # Fallback to random valid action
         return np.argmax(masked_q_values)
 
     def train(self, batch_size):
@@ -161,7 +173,7 @@ def load_training_metadata(filename):
 
 if __name__ == '__main__':
 
-    env = gym.make("gymnasium_env/CenturyGolem-v5")
+    env = gym.make("gymnasium_env/CenturyGolem-v5", render_mode='text')
     env = FlattenObservation(env)
 
     # Define state and action size
@@ -172,7 +184,7 @@ if __name__ == '__main__':
     random_agent = RandomAgent(action_size)
     
     # Load Agent and Metadata if continuing training
-    continue_training = True  # Set to False if starting fresh
+    continue_training = False  # Set to False if starting fresh
     if continue_training:
         dqn_agent.load_agent('checkpoint')  # Load saved agent
         metadata = load_training_metadata('training_metadata.json')
@@ -182,7 +194,7 @@ if __name__ == '__main__':
     # Define number of episodes, timesteps per episode and batch size
     num_episodes = 10000
     num_timesteps = 200
-    batch_size = 64
+    batch_size = 128
     time_step = metadata['time_step']
     rewards = metadata['rewards']
     epsilon_values = metadata['epsilon_values']

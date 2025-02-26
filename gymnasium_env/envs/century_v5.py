@@ -280,7 +280,7 @@ class CenturyGolemEnv(gym.Env):
         # Rest
         if action == Actions.rest.value:
             self.current_player.merchant_cards = [2 if card == 1 else card for card in self.current_player.merchant_cards]
-            # OR reward -= 0.2
+            reward -= 3.0
             self.combo_length = 0
             
         # Get a merchant card
@@ -304,7 +304,7 @@ class CenturyGolemEnv(gym.Env):
                     new_card = random.choice(cards_in_deck)
                     self.merchant_market.append(new_card)
                 
-                reward += 2.0 + (0.3 * self.merchant_deck[card_id].gain['yellow']) + (0.5 * self.merchant_deck[card_id].gain['green'])
+                reward += 5.0 + (0.3 * self.merchant_deck[card_id].gain['yellow']) + (0.5 * self.merchant_deck[card_id].gain['green'])
             else:
                 reward -= 1.0
             self.combo_length = 0
@@ -355,7 +355,7 @@ class CenturyGolemEnv(gym.Env):
                     
                     # Reward for getting the golem card
                     rarity_multiplier = 1.0 + (self.golem_deck[card_id].points / 10)
-                    reward += (10 + self.golem_deck[card_id].points) * rarity_multiplier
+                    reward += (15.0 + self.golem_deck[card_id].points) * rarity_multiplier
                     
                     # Reward for blocking opponent
                     if self.other_player.yellow >= self.golem_deck[card_id].cost["yellow"] and self.other_player.green >= self.golem_deck[card_id].cost["green"]:
