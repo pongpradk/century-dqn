@@ -238,7 +238,7 @@ class CenturyGolemEnv(gym.Env):
         total_crystals = self.current_player.yellow + self.current_player.green
         if total_crystals > 10:
             excess = total_crystals - 10
-            penalty = 0.5 * excess
+            penalty = 1.0 * excess
             # Remove excess starting with yellow, then green
             if self.current_player.yellow >= excess:
                 self.current_player.yellow -= excess
@@ -289,7 +289,7 @@ class CenturyGolemEnv(gym.Env):
                     new_card = random.choice(cards_in_deck)
                     self.merchant_market.append(new_card)
                 
-                reward += 8.0 + (0.7 * self.merchant_deck[card_id].gain['yellow']) + (1.2 * self.merchant_deck[card_id].gain['green'])
+                reward += 6.0 + (0.8 * self.merchant_deck[card_id].gain['yellow']) + (1.3 * self.merchant_deck[card_id].gain['green'])
             else:
                 reward -= 1.0
                 
@@ -301,7 +301,7 @@ class CenturyGolemEnv(gym.Env):
                 self.current_player.green += self.merchant_deck[card_id].gain['green']
                 self.current_player.merchant_cards[card_idx] = 1 # set card status to owned but unplayable
 
-                reward += (0.5 * self.merchant_deck[card_id].gain['yellow'] + 1.0 * self.merchant_deck[card_id].gain['green'])
+                reward += (0.4 * self.merchant_deck[card_id].gain['yellow'] + 1.2 * self.merchant_deck[card_id].gain['green'])
             else:
                 reward -= 1.0
         
@@ -329,7 +329,7 @@ class CenturyGolemEnv(gym.Env):
                     self.golem_market.append(new_card)
 
                 # Reward for getting the golem card
-                reward += 15.0 + self.golem_deck[card_id].points
+                reward += 18.0 + self.golem_deck[card_id].points
                 
                 # Reward for blocking opponent from getting the golem card
                 if self.other_player.yellow >= self.golem_deck[card_id].cost["yellow"] and self.other_player.green >= self.golem_deck[card_id].cost["green"]:
@@ -358,11 +358,11 @@ class CenturyGolemEnv(gym.Env):
             # Endgame reward
             score_diff = agent_final_points - opponent_final_points
             if score_diff > 0:
-                reward += 100 + (2 * score_diff)
+                reward += 100 + (1.5 * score_diff)
             elif score_diff == 0:
                 reward += 50  # Tie
             else:
-                reward -= max(50 - (0.5 * abs(score_diff)), 10)
+                reward -= max(50 - (0.5 * abs(score_diff)), 30)
         
         # Switch turn
         self.current_player, self.other_player = self.other_player, self.current_player
