@@ -277,15 +277,11 @@ class CenturyGolemEnv(gym.Env):
         
         combo_bonus = 0
         
-        # Only increment step count for our training agent
-        if self.current_player == self.agent:
-            self.steps_taken += 1
-            # OR reward -= 0.2
-            self.combo_length = 0
-        
         # Rest
         if action == Actions.rest.value:
             self.current_player.merchant_cards = [2 if card == 1 else card for card in self.current_player.merchant_cards]
+            # OR reward -= 0.2
+            self.combo_length = 0
             
         # Get a merchant card
         elif Actions.getM2.value <= action <= Actions.getM6.value:

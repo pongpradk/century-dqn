@@ -82,7 +82,6 @@ if __name__ == '__main__':
 
         # === DQNAgent's Turn ===
         if current_player == 0:
-            print("DQNAgent's Turn")
             state_input = state.reshape((1, state_size))  # Reshape for NN input
             action = select_trained_agent_action(state_input, trained_agent)
             next_state, reward, terminal, _, info = env.step(action)
@@ -90,7 +89,6 @@ if __name__ == '__main__':
             total_reward += reward
         # === RandomAgent's Turn ===
         else:
-            print("RandomAgent's Turn")
             valid_mask = info["valid_actions"]
             action = random_agent.pick_random_action(valid_mask)
             next_state, reward, terminal, _, info = env.step(action)
@@ -107,8 +105,6 @@ if __name__ == '__main__':
             break
 
     env.close()
-        
-        
         
     print(f"Total Reward: {total_reward}")
     # plot_rewards(1)
