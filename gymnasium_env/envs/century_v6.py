@@ -231,7 +231,7 @@ class CenturyGolemEnv(gym.Env):
                     player.green >= golem_card.cost.get("green", 0)):
                     valid_actions[i] = 1
 
-        return valid_actions
+        return valid_actions      
 
     # Remove and penalize excess crystals
     def _remove_excess_crystals(self):
@@ -289,7 +289,7 @@ class CenturyGolemEnv(gym.Env):
                     new_card = random.choice(cards_in_deck)
                     self.merchant_market.append(new_card)
                 
-                reward += 5.0 + (0.5 * self.merchant_deck[card_id].gain['yellow']) + (1.0 * self.merchant_deck[card_id].gain['green'])
+                reward += 8.0 + (0.7 * self.merchant_deck[card_id].gain['yellow']) + (1.2 * self.merchant_deck[card_id].gain['green'])
             else:
                 reward -= 1.0
                 
@@ -358,11 +358,11 @@ class CenturyGolemEnv(gym.Env):
             # Endgame reward
             score_diff = agent_final_points - opponent_final_points
             if score_diff > 0:
-                reward += 100
+                reward += 100 + (2 * score_diff)
             elif score_diff == 0:
                 reward += 50  # Tie
             else:
-                reward -= 50  # Loss
+                reward -= max(50 - (0.5 * abs(score_diff)), 10)
         
         # Switch turn
         self.current_player, self.other_player = self.other_player, self.current_player
