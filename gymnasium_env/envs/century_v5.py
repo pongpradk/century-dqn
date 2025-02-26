@@ -115,6 +115,8 @@ class CenturyGolemEnv(gym.Env):
         self.endgame_triggered = False  # Tracks if endgame was triggered
         self.endgame_initiator = None   # The player who triggered the endgame
         
+        self.combo_length = 0
+        
         self.steps_taken = 0
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -186,6 +188,8 @@ class CenturyGolemEnv(gym.Env):
             
         self.endgame_triggered = False  # Tracks if endgame was triggered
         self.endgame_initiator = None   # The player who triggered the endgame
+        
+        self.combo_length = 0
         
         self.steps_taken = 0
         
@@ -271,10 +275,13 @@ class CenturyGolemEnv(gym.Env):
         reward = -0.5  # Base time-step penalty
         terminated = False
         
+        combo_bonus = 0
+        
         # Only increment step count for our training agent
         if self.current_player == self.agent:
             self.steps_taken += 1
             # OR reward -= 0.2
+            self.combo_length = 0
         
         # Rest
         if action == Actions.rest.value:
@@ -304,6 +311,7 @@ class CenturyGolemEnv(gym.Env):
                 reward += 2.0 + (0.3 * self.merchant_deck[card_id].gain['yellow']) + (0.5 * self.merchant_deck[card_id].gain['green'])
             else:
                 reward -= 1.0
+            self.combo_length = 0
                 
         # Use a merchant card
         elif Actions.useM1.value <= action <= Actions.useM6.value:
@@ -313,10 +321,17 @@ class CenturyGolemEnv(gym.Env):
                 self.current_player.green += self.merchant_deck[card_id].gain['green']
                 self.current_player.merchant_cards[card_idx] = 1 # set card status to owned but unplayable
                 
-                # Give reward
+                # Base reward for using merchant card
                 reward += (0.5 * self.merchant_deck[card_id].gain['yellow'] + 1.0 * self.merchant_deck[card_id].gain['green'])
+                
+                # Reward for chaining usage of merchant cards
+                self.combo_length += 1
+                if self.combo_length > 1:
+                    combo_bonus = (self.combo_length - 1) * 0.5  # Example: +0.5 for every extra chained card
+                    reward += combo_bonus    
             else:
                 reward -= 0.5
+                self.combo_length = 0
         
         # Get a golem card
         elif Actions.getG1.value <= action <= Actions.getG5.value:
@@ -354,6 +369,7 @@ class CenturyGolemEnv(gym.Env):
                     reward -= 1.0
             else:
                 reward -= 1.0
+            self.combo_length = 0
 
         # Apply crystal limit before returning the observation
         penalty = self._enforce_crystal_limit()
