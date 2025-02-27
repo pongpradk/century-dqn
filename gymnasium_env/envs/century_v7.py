@@ -433,7 +433,6 @@ class CenturyGolemEnv(gym.Env):
 
     def _render_frame(self):
         if self.window is None and self.render_mode == "human":
-            print("HUMAN RENDER")
             pygame.init()
             pygame.display.init()
             self.window = pygame.display.set_mode((self.window_size, self.window_size))
@@ -444,19 +443,15 @@ class CenturyGolemEnv(gym.Env):
         canvas = pygame.Surface((self.window_size, self.window_size))
         canvas.fill((255, 255, 255))  # White background
         
-        # === ROUND ===
+        # === ROUND & TURN ===
         
-        # Display round number at the top-left
-        font = pygame.font.Font(None, 24)  # Set font size
-        round_text = font.render(f"ROUND : {self.round}", True, (0, 0, 0))  # Render round text
-        canvas.blit(round_text, (10, 10))  # Position at (10,10) from top-left
-        
-        # === TURN ===
-        
-        # Display player turn at the top-left
-        player_turn = "DQN" if self.current_player == self.agent else "Random"
-        round_text = font.render(f"TURN : {player_turn}", True, (0, 0, 0))  # Render round text
-        canvas.blit(round_text, (10, 30))  # Position at (10,10) from top-left
+        # Display round and player turn at the top-left
+        font = pygame.font.Font(None, 24)
+        round_text = font.render(f"ROUND: {self.round}", True, (0, 0, 0))
+        turn_text = font.render(f"TURN : {'DQN' if self.current_player == self.agent else 'Random'}", True, (0, 0, 0))
+
+        canvas.blit(round_text, (10, 10))  # Move round number higher
+        canvas.blit(turn_text, (10, 30))  # Keep turn text below round number
         
         # === GOLEM CARDS IN MARKET ===
 
@@ -471,12 +466,19 @@ class CenturyGolemEnv(gym.Env):
             y = 60  # Fixed y position
 
             # Draw card background
-            pygame.draw.rect(canvas, (200, 200, 200), (x, y, card_width, card_height), border_radius=10)
-            pygame.draw.rect(canvas, (0, 0, 0), (x, y, card_width, card_height), width=3, border_radius=10)
+            pygame.draw.rect(canvas, (69, 69, 69), (x, y, card_width, card_height), border_radius=10)
+            pygame.draw.rect(canvas, (176, 176, 176), (x, y, card_width, card_height), width=3, border_radius=10)
+            
+            # Draw letter "G" in blue at the center of the card (underneath crystals and points)
+            font_large = pygame.font.Font(None, 50)  # Larger font size
+            g_text = font_large.render("G", True, (92, 92, 92, 100))  # Blue color, semi-transparent
+            g_text_x = x + (card_width // 2) - (g_text.get_width() // 2)
+            g_text_y = y + (card_height // 2) - (g_text.get_height() // 2)
+            canvas.blit(g_text, (g_text_x, g_text_y))
             
             # Draw card points at the top center
             font = pygame.font.Font(None, 24)  # Set font size
-            points_text = font.render(str(golem_card.points), True, (0, 0, 0))  # Render points text
+            points_text = font.render(str(golem_card.points), True, (255, 255, 255))  # Render points text
             text_x = x + (card_width // 2) - (points_text.get_width() // 2)
             text_y = y + 8  # Place at top of the card
             canvas.blit(points_text, (text_x, text_y))
@@ -505,6 +507,49 @@ class CenturyGolemEnv(gym.Env):
                     if col >= max_per_row:  # If row is full, move to next row
                         col = 0
                         row += 1
+
+        # === MERCHANT CARDS IN MARKET ===
+
+        # Define merchant card positions
+        merchant_y = y + card_height + 15  # Below golem cards with spacing
+
+        # Draw merchant cards
+        for i, merchant_card in enumerate(self.merchant_market):
+            x = margin + i * (card_width + margin)
+
+            # Draw card background
+            pygame.draw.rect(canvas, (69, 69, 69), (x, merchant_y, card_width, card_height), border_radius=10)
+            pygame.draw.rect(canvas, (176, 176, 176), (x, merchant_y, card_width, card_height), width=3, border_radius=10)
+            
+            # Draw letter "G" in blue at the center of the card (underneath crystals and points)
+            font_large = pygame.font.Font(None, 50)  # Larger font size
+            m_text = font_large.render("M", True, (92, 92, 92, 100))  # Blue color, semi-transparent
+            m_text_x = x + (card_width // 2) - (g_text.get_width() // 2)
+            m_text_y = merchant_y + (card_height // 2) - (g_text.get_height() // 2)
+            canvas.blit(m_text, (m_text_x, m_text_y))
+
+            # Set starting position for crystals (at the top of the card)
+            cost_x = x + 15  # Left padding
+            cost_y = merchant_y + 15  # Move up since no points
+
+            circle_radius = 7
+            col = 0  # Track position in row
+            row = 0  # Track row index
+            max_per_row = 3  # Allow up to 3 per row
+            row_offset = 18  # Vertical spacing between rows
+            col_offset = 18  # Horizontal spacing between circles
+
+            for color, amount in merchant_card.gain.items():  # Merchant cards show gain instead of cost
+                for _ in range(amount):
+                    if color == "yellow":
+                        pygame.draw.circle(canvas, (255, 215, 0), (cost_x + col * col_offset, cost_y + row * row_offset), circle_radius)
+                    elif color == "green":
+                        pygame.draw.circle(canvas, (0, 128, 0), (cost_x + col * col_offset, cost_y + row * row_offset), circle_radius)
+
+                    col += 1  # Move to next column
+                    if col >= max_per_row:
+                        col = 0
+                        row += 1
         
         # === PLAYER CRYSTALS ===
         
@@ -513,7 +558,7 @@ class CenturyGolemEnv(gym.Env):
         
         # Define positions for player crystals
         player_start_x = 10  # Left-aligned
-        player_start_y = 170  # Below golem market
+        player_start_y = merchant_y + card_height + 20
         circle_radius = 7
         circle_spacing = 16  # Space between circles
 

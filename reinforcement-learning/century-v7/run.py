@@ -116,5 +116,5 @@ def dqn_vs_random(turns=5):
 # custom_actions([1,2,3,4,5]) # get all merchant cards
 # custom_actions([5,0,11,0,12]) # get one golem
 # input_action()
-random(6)
-# play_against_random(50)
+# random(6)
+play_against_random(50)
