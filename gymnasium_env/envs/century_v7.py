@@ -444,10 +444,21 @@ class CenturyGolemEnv(gym.Env):
         canvas = pygame.Surface((self.window_size, self.window_size))
         canvas.fill((255, 255, 255))  # White background
         
+        # === ROUND ===
+        
         # Display round number at the top-left
         font = pygame.font.Font(None, 24)  # Set font size
-        round_text = font.render(f"ROUND: {self.round}", True, (0, 0, 0))  # Render round text
+        round_text = font.render(f"ROUND : {self.round}", True, (0, 0, 0))  # Render round text
         canvas.blit(round_text, (10, 10))  # Position at (10,10) from top-left
+        
+        # === TURN ===
+        
+        # Display player turn at the top-left
+        player_turn = "DQN" if self.current_player == self.agent else "Random"
+        round_text = font.render(f"TURN : {player_turn}", True, (0, 0, 0))  # Render round text
+        canvas.blit(round_text, (10, 30))  # Position at (10,10) from top-left
+        
+        # === GOLEM CARDS IN MARKET ===
 
         # Define card dimensions
         card_width = 66   # Slightly wider for better layout
@@ -457,7 +468,7 @@ class CenturyGolemEnv(gym.Env):
         # Draw golem cards
         for i, golem_card in enumerate(self.golem_market):
             x = margin + i * (card_width + margin)
-            y = 50  # Fixed y position
+            y = 60  # Fixed y position
 
             # Draw card background
             pygame.draw.rect(canvas, (200, 200, 200), (x, y, card_width, card_height), border_radius=10)
@@ -494,6 +505,43 @@ class CenturyGolemEnv(gym.Env):
                     if col >= max_per_row:  # If row is full, move to next row
                         col = 0
                         row += 1
+        
+        # === PLAYER CRYSTALS ===
+        
+        # Define font
+        font = pygame.font.Font(None, 22)
+        
+        # Define positions for player crystals
+        player_start_x = 10  # Left-aligned
+        player_start_y = 170  # Below golem market
+        circle_radius = 7
+        circle_spacing = 16  # Space between circles
+
+        # Draw player labels
+        agent_label = font.render("DQN", True, (0, 0, 0))
+        opponent_label = font.render("Random", True, (0, 0, 0))
+        canvas.blit(agent_label, (player_start_x, player_start_y))
+        canvas.blit(opponent_label, (player_start_x, player_start_y + 20))  # Opponent below agent
+
+        # Draw agent's crystals
+        x_offset = player_start_x + 80  # Start drawing circles after label
+        y_offset = player_start_y + 7  # Align vertically with text
+        for _ in range(self.agent.yellow):
+            pygame.draw.circle(canvas, (255, 215, 0), (x_offset, y_offset), circle_radius)  # Yellow
+            x_offset += circle_spacing
+        for _ in range(self.agent.green):
+            pygame.draw.circle(canvas, (0, 128, 0), (x_offset, y_offset), circle_radius)  # Green
+            x_offset += circle_spacing
+
+        # Draw opponent's crystals
+        x_offset = player_start_x + 80
+        y_offset = player_start_y + 27  # Opponent row
+        for _ in range(self.opponent.yellow):
+            pygame.draw.circle(canvas, (255, 215, 0), (x_offset, y_offset), circle_radius)
+            x_offset += circle_spacing
+        for _ in range(self.opponent.green):
+            pygame.draw.circle(canvas, (0, 128, 0), (x_offset, y_offset), circle_radius)
+            x_offset += circle_spacing
 
         # Display updates
         self.window.blit(canvas, (0, 0))
