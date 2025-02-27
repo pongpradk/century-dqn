@@ -433,9 +433,9 @@ class CenturyGolemEnv(gym.Env):
         canvas.fill((255, 255, 255))  # White background
 
         # Define card dimensions
-        card_width = 100
-        card_height = 150
-        margin = 20
+        card_width = 66   # Slightly wider for better layout
+        card_height = 96  # Adjust height to fit points and crystals
+        margin = 15       # Reduce spacing between cards
 
         # Draw golem cards
         for i, golem_card in enumerate(self.golem_market):
@@ -445,17 +445,38 @@ class CenturyGolemEnv(gym.Env):
             # Draw card background
             pygame.draw.rect(canvas, (200, 200, 200), (x, y, card_width, card_height), border_radius=10)
             pygame.draw.rect(canvas, (0, 0, 0), (x, y, card_width, card_height), width=3, border_radius=10)
+            
+            # Draw card points at the top center
+            font = pygame.font.Font(None, 24)  # Set font size
+            points_text = font.render(str(golem_card.points), True, (0, 0, 0))  # Render points text
+            text_x = x + (card_width // 2) - (points_text.get_width() // 2)
+            text_y = y + 8  # Place at top of the card
+            canvas.blit(points_text, (text_x, text_y))
 
-            # Draw cost (as small circles)
-            cost_x = x + 10
-            cost_y = y + 20
+            # Set starting position for crystals
+            cost_x = x + 15  # Left padding
+            cost_y = y + 35  # Below points text
+            circle_radius = 7  # Keep small size
+
+            # Rearrange costs in two rows (up to 3 per row)
+            max_per_row = 3
+            row_offset = 18  # Vertical spacing between rows
+            col_offset = 18  # Horizontal spacing between circles
+
+            col = 0  # Track position in row
+            row = 0  # Track row index
+
             for color, amount in golem_card.cost.items():
                 for _ in range(amount):
                     if color == "yellow":
-                        pygame.draw.circle(canvas, (255, 215, 0), (cost_x, cost_y), 10)  # Yellow
+                        pygame.draw.circle(canvas, (255, 215, 0), (cost_x + col * col_offset, cost_y + row * row_offset), circle_radius)
                     elif color == "green":
-                        pygame.draw.circle(canvas, (0, 128, 0), (cost_x, cost_y), 10)  # Green
-                    cost_y += 15  # Stack vertically
+                        pygame.draw.circle(canvas, (0, 128, 0), (cost_x + col * col_offset, cost_y + row * row_offset), circle_radius)
+
+                    col += 1  # Move to the next column
+                    if col >= max_per_row:  # If row is full, move to next row
+                        col = 0
+                        row += 1
 
         # Display updates
         self.window.blit(canvas, (0, 0))
