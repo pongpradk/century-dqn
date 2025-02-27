@@ -115,6 +115,9 @@ class CenturyGolemEnv(gym.Env):
         self.endgame_triggered = False  # Tracks if endgame was triggered
         self.endgame_initiator = None   # The player who triggered the endgame
         
+        self.turn_counter = 0
+        self.round = 1
+        
         # Render
         self.window = None
         self.clock = None
@@ -187,6 +190,9 @@ class CenturyGolemEnv(gym.Env):
             
         self.endgame_triggered = False  # Tracks if endgame was triggered
         self.endgame_initiator = None   # The player who triggered the endgame
+        
+        self.turn_counter = 0
+        self.round = 1
         
         observation = self._get_obs(self.current_player)
         info = self._get_info()
@@ -371,6 +377,12 @@ class CenturyGolemEnv(gym.Env):
         
         # Switch turn
         self.current_player, self.other_player = self.other_player, self.current_player
+
+        # Turn and Round
+        if not terminated:
+            self.turn_counter += 1  
+            if self.turn_counter % 2 == 0:
+                self.round += 1
         
         observation = self._get_obs(self.current_player)
         info = self._get_info()
@@ -431,6 +443,11 @@ class CenturyGolemEnv(gym.Env):
         # Create a surface to draw on
         canvas = pygame.Surface((self.window_size, self.window_size))
         canvas.fill((255, 255, 255))  # White background
+        
+        # Display round number at the top-left
+        font = pygame.font.Font(None, 24)  # Set font size
+        round_text = font.render(f"ROUND: {self.round}", True, (0, 0, 0))  # Render round text
+        canvas.blit(round_text, (10, 10))  # Position at (10,10) from top-left
 
         # Define card dimensions
         card_width = 66   # Slightly wider for better layout
