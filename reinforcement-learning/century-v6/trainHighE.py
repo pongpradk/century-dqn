@@ -76,7 +76,7 @@ class DQNAgent:
         self.gamma = 0.95
         self.epsilon = 0.5
         self.epsilon_min = 0.5
-        self.epsilon_decay = 2
+        self.epsilon_decay = 1
         self.learning_rate = 0.0003
         self.update_rate = 250
 
@@ -215,7 +215,7 @@ if __name__ == '__main__':
         input("[INFO] Please confirm that you do not want to continue.")
     if continue_training:
         dqn_agent.load_agent('highE')  # Load saved agent
-        metadata = load_training_metadata('training_metadata.json')
+        metadata = load_training_metadata('training_metadataHighE.json')
     else:
         metadata = {'episode': 0, 'time_step': 0, 'rewards': [], 'epsilon_values': []}
     

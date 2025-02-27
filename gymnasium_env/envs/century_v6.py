@@ -97,7 +97,7 @@ class CenturyGolemEnv(gym.Env):
         self.golem_deck = {
             1: GolemCard(1, "Y2G2", {"yellow": 2, "green": 2}, points=6),
             2: GolemCard(2, "Y3G2", {"yellow": 3, "green": 2}, points=7),
-            3: GolemCard(3, "Y2G3", {"yellow": 3, "green": 2}, points=8),
+            3: GolemCard(3, "Y2G3", {"yellow": 2, "green": 3}, points=8),
             4: GolemCard(4, "G4", {"yellow": 0, "green": 4}, points=8),
             5: GolemCard(5, "G5", {"yellow": 0, "green": 5}, points=10)
         }

@@ -31,7 +31,7 @@ class RandomAgent:
 
 def plot_epsilon_values():
     """Plots the different values for Epsilon during the training"""
-    with open('epsilon_valueshighE.txt', 'r') as f:
+    with open('epsilon_valuesHighE.txt', 'r') as f:
         file = f.read()
         epsilon_values = json.loads(file)
 
@@ -70,11 +70,11 @@ if __name__ == '__main__':
     action_size = env.action_space.n
     
     terminal = False
-    trained_agent = load_pretrained_model('highE_main_model.keras')
+    trained_agent = load_pretrained_model('checkpoint_main_model.keras')
     random_agent = RandomAgent(action_size)
 
     total_reward = 0
-    max_timesteps = 50
+    max_timesteps = 200
     
     for t in range(max_timesteps):
         # Check which agent's turn it is
