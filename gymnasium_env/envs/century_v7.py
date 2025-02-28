@@ -557,7 +557,8 @@ class CenturyGolemEnv(gym.Env):
         
         # === DQN PLAYER'S NAME ===
         player_start_y = separator_y + 15  # Space below the separator
-        agent_label = font.render("DQN", True, (0, 0, 0))
+        turn_arrow = "-> " if self.current_player == self.agent else ""  # Show arrow if it's DQN's turn
+        agent_label = font.render(f"{turn_arrow}DQN", True, (0, 0, 0))
         canvas.blit(agent_label, (10, player_start_y))
 
         # === DQN PLAYER'S CRYSTALS BELOW NAME ===
@@ -649,7 +650,8 @@ class CenturyGolemEnv(gym.Env):
         
         # === RANDOM PLAYER'S NAME ===
         random_name_y = golem_info_y + 60  # Space below DQN’s section
-        random_label = font.render("Random", True, (0, 0, 0))
+        turn_arrow = "-> " if self.current_player == self.opponent else ""  # Show arrow if it's Random's turn
+        random_label = font.render(f"{turn_arrow}Random", True, (0, 0, 0))
         canvas.blit(random_label, (10, random_name_y))
 
         # === RANDOM PLAYER'S CRYSTALS BELOW NAME ===
