@@ -441,7 +441,7 @@ class CenturyGolemEnv(gym.Env):
 
         # Create a surface to draw on
         canvas = pygame.Surface((self.window_size, self.window_size))
-        canvas.fill((255, 255, 255))  # White background
+        canvas.fill((255, 255, 255))  # Light birch wood color (beige)
         
         # === ROUND & TURN ===
         
@@ -555,17 +555,16 @@ class CenturyGolemEnv(gym.Env):
         separator_y = merchant_y + card_height + 10  # Position under merchant cards
         pygame.draw.line(canvas, (0, 0, 0), (10, separator_y), (self.window_size - 10, separator_y), 3)  # Black horizontal line
         
-        # === DQN PLAYER INFO ===
-
-        player_start_y = separator_y + 15  # Space below separator
-
-        # Draw DQN player label
+        # === DQN PLAYER'S NAME ===
+        player_start_y = separator_y + 15  # Space below the separator
         agent_label = font.render("DQN", True, (0, 0, 0))
         canvas.blit(agent_label, (10, player_start_y))
 
-        # Draw DQN player's crystals
-        x_offset = 70  # Align circles next to player name
-        y_offset = player_start_y + 7
+        # === DQN PLAYER'S CRYSTALS BELOW NAME ===
+        player_crystals_y = player_start_y + 28  # Move crystals below the name
+        x_offset = 18  # Align circles under the name
+        y_offset = player_crystals_y
+        
         circle_radius = 7
         circle_spacing = 16
 
@@ -577,7 +576,7 @@ class CenturyGolemEnv(gym.Env):
             x_offset += circle_spacing
         
         # === DQN's OWNED MERCHANT CARDS ===
-        merchant_card_y = player_start_y + 30  # Below player crystals
+        merchant_card_y = player_start_y + 45  # Below player crystals
         merchant_card_x = 10  # Start position for displaying cards
         merchant_card_width = 50  # Smaller than market cards
         merchant_card_height = 70
@@ -631,7 +630,7 @@ class CenturyGolemEnv(gym.Env):
                         row += 1
 
         # === DQN's GOLEM COUNT & POINTS ===
-        golem_info_y = merchant_card_y + merchant_card_height + 20  # Below merchant cards
+        golem_info_y = merchant_card_y + merchant_card_height + 15  # Below merchant cards
 
         # Define font
         font = pygame.font.Font(None, 24)
@@ -643,6 +642,94 @@ class CenturyGolemEnv(gym.Env):
         # Display text on the canvas
         canvas.blit(golem_count_text, (10, golem_info_y))
         canvas.blit(golem_points_text, (10, golem_info_y + 25))  # Points below count
+        
+        # === SEPARATOR LINE ===
+        separator_y = golem_info_y + 50  # Space below DQN’s info
+        pygame.draw.line(canvas, (0, 0, 0), (10, separator_y), (self.window_size - 10, separator_y), 3)  # Black horizontal line
+        
+        # === RANDOM PLAYER'S NAME ===
+        random_name_y = golem_info_y + 60  # Space below DQN’s section
+        random_label = font.render("Random", True, (0, 0, 0))
+        canvas.blit(random_label, (10, random_name_y))
+
+        # === RANDOM PLAYER'S CRYSTALS BELOW NAME ===
+        random_crystals_y = random_name_y + 28  # Move crystals below the name
+        x_offset = 18  # Align circles under the name
+        y_offset = random_crystals_y
+        
+        circle_radius = 7
+        circle_spacing = 16
+
+        for _ in range(self.opponent.yellow):
+            pygame.draw.circle(canvas, (255, 215, 0), (x_offset, y_offset), circle_radius)  # Yellow
+            x_offset += circle_spacing
+        for _ in range(self.opponent.green):
+            pygame.draw.circle(canvas, (0, 128, 0), (x_offset, y_offset), circle_radius)  # Green
+            x_offset += circle_spacing
+        
+        # === RANDOM PLAYER'S OWNED MERCHANT CARDS (PLAYABLE & UNPLAYABLE) ===
+        random_merchant_card_y = random_crystals_y + 20  # Below separator
+        random_merchant_card_x = 10  # Start position for displaying cards
+        random_merchant_card_width = 50  # Same size as DQN's merchant cards
+        random_merchant_card_height = 70
+        random_merchant_card_margin = 10
+
+        # Filter all owned merchant cards (both playable and unplayable)
+        random_owned_merchant_cards = [(self.merchant_deck[i + 1], status) for i, status in enumerate(self.opponent.merchant_cards) if status > 0]
+
+        # Draw merchant cards
+        for i, (merchant_card, status) in enumerate(random_owned_merchant_cards):
+            x = random_merchant_card_x + i * (random_merchant_card_width + random_merchant_card_margin)
+
+            # Determine color based on playability
+            is_playable = status == 2  # 2 = playable, 1 = unplayable
+            card_color = (69, 69, 69) if is_playable else (100, 100, 100)  # Darker for unplayable
+            border_color = (176, 176, 176) if is_playable else (140, 140, 140)  # Greyed border
+
+            # Draw card background
+            pygame.draw.rect(canvas, card_color, (x, random_merchant_card_y, random_merchant_card_width, random_merchant_card_height), border_radius=10)
+            pygame.draw.rect(canvas, border_color, (x, random_merchant_card_y, random_merchant_card_width, random_merchant_card_height), width=2, border_radius=10)
+
+            # Draw "M" in the center of the card (Faded for unplayable)
+            font_large = pygame.font.Font(None, 36)
+            m_text_color = (200, 200, 200) if is_playable else (150, 150, 150)  # Lighter for unplayable
+            m_text = font_large.render("M", True, m_text_color)
+            text_x = x + (random_merchant_card_width // 2) - (m_text.get_width() // 2)
+            text_y = random_merchant_card_y + (random_merchant_card_height // 2) - (m_text.get_height() // 2)
+            canvas.blit(m_text, (text_x, text_y))
+
+            # Draw the merchant card's crystals (Faded for unplayable)
+            cost_x = x + 10  # Left padding
+            cost_y = random_merchant_card_y + 10  # Top padding
+            circle_radius = 5  # Smaller circle size
+            col = 0  # Track column
+            row = 0  # Track row index
+            max_per_row = 2  # Two per row
+            row_offset = 14  # Vertical spacing
+            col_offset = 14  # Horizontal spacing
+
+            for color, amount in merchant_card.gain.items():
+                faded_color = (255, 215, 0) if color == "yellow" else (0, 128, 0)  # Normal for playable
+                if not is_playable:
+                    faded_color = (200, 200, 100) if color == "yellow" else (100, 180, 100)  # Lightened for unplayable
+                
+                pygame.draw.circle(canvas, faded_color, (cost_x + col * col_offset, cost_y + row * row_offset), circle_radius)
+
+                col += 1
+                if col >= max_per_row:
+                    col = 0
+                    row += 1
+                    
+        # === RANDOM PLAYER'S GOLEM COUNT & POINTS ===
+        random_golem_info_y = random_merchant_card_y + random_merchant_card_height + 15  # Below merchant cards
+
+        # Create text surfaces
+        random_golem_count_text = font.render(f"Golem Count: {self.opponent.golem_count}", True, (0, 0, 0))
+        random_golem_points_text = font.render(f"Golem Points: {self.opponent.points}", True, (0, 0, 0))
+
+        # Display text on the canvas
+        canvas.blit(random_golem_count_text, (10, random_golem_info_y))
+        canvas.blit(random_golem_points_text, (10, random_golem_info_y + 25))  # Points below count
 
         # Display updates
         self.window.blit(canvas, (0, 0))
