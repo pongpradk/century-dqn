@@ -54,7 +54,7 @@ class Actions(Enum):
     getG5 = 16
 
 class CenturyGolemEnv(gym.Env):
-    metadata = {"render_modes": ["text", "human"], "render_fps": 1}
+    metadata = {"render_modes": ["text", "human"], "render_fps": 0.5}
     
     def __init__(self, render_mode=None):
         

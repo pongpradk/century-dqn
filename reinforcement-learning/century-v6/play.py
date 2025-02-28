@@ -63,6 +63,7 @@ def plot_rewards(calculate_mean=1):
 if __name__ == '__main__':
 
     env = gym.make('gymnasium_env/CenturyGolem-v6', render_mode='text')
+    # env = gym.make('gymnasium_env/CenturyGolem-v7', render_mode='human')
     env = FlattenObservation(env)
     state, info = env.reset()
     
@@ -70,7 +71,7 @@ if __name__ == '__main__':
     action_size = env.action_space.n
     
     terminal = False
-    trained_agent = load_pretrained_model('checkpoint_main_model.keras')
+    trained_agent = load_pretrained_model('250ep_main_model.keras')
     random_agent = RandomAgent(action_size)
 
     total_reward = 0
