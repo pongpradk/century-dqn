@@ -630,6 +630,20 @@ class CenturyGolemEnv(gym.Env):
                         col = 0
                         row += 1
 
+        # === DQN's GOLEM COUNT & POINTS ===
+        golem_info_y = merchant_card_y + merchant_card_height + 20  # Below merchant cards
+
+        # Define font
+        font = pygame.font.Font(None, 24)
+
+        # Create text surfaces
+        golem_count_text = font.render(f"Golem Count: {self.agent.golem_count}", True, (0, 0, 0))
+        golem_points_text = font.render(f"Golem Points: {self.agent.points}", True, (0, 0, 0))
+
+        # Display text on the canvas
+        canvas.blit(golem_count_text, (10, golem_info_y))
+        canvas.blit(golem_points_text, (10, golem_info_y + 25))  # Points below count
+
         # Display updates
         self.window.blit(canvas, (0, 0))
         pygame.event.pump()
