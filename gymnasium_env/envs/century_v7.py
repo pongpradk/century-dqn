@@ -56,7 +56,7 @@ class Actions(Enum):
     getG5 = 16
 
 class CenturyGolemEnv(gym.Env):
-    metadata = {"render_modes": ["text", "human"], "render_fps": 0.5}
+    metadata = {"render_modes": ["text", "human"], "render_fps": 4}
     
     def __init__(self, render_mode=None, record_session=False):
         
@@ -123,7 +123,7 @@ class CenturyGolemEnv(gym.Env):
         # Render
         self.window = None
         self.clock = None
-        self.window_size = 700  # Size of the render window
+        self.window_size = 800  # Size of the render window
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
         
@@ -135,6 +135,10 @@ class CenturyGolemEnv(gym.Env):
         
         if self.record_session:
             self.video_writer = None  # Initialize later when first frame is captured
+        
+        self.winner = None  # Stores winner's name ("DQN" or "Random")
+        self.agent_final_points = 0  # Stores final DQN points
+        self.opponent_final_points = 0  # Stores final Random points
     
     def _get_obs(self, player):
         # Returns observation from the perspective of the player
@@ -376,20 +380,19 @@ class CenturyGolemEnv(gym.Env):
             terminated = True
 
             # Calculate final points for both players
-            agent_final_points = self.calculate_total_points(self.agent)
-            opponent_final_points = self.calculate_total_points(self.opponent)
+            self.agent_final_points = self.calculate_total_points(self.agent)
+            self.opponent_final_points = self.calculate_total_points(self.opponent)
             
             # If not agent's turn, the reward is reset, before calculation
             if self.current_player != self.agent:
                 reward = 0
             
             # Endgame reward
-            score_diff = agent_final_points - opponent_final_points
+            score_diff = self.agent_final_points - self.opponent_final_points
             if score_diff > 0:
                 self.winner = self.agent
                 reward += 100 + (1.5 * score_diff)
             elif score_diff == 0:
-                self.winner = None
                 reward += 50  # Tie
             else:
                 self.winner = self.opponent
@@ -473,6 +476,9 @@ class CenturyGolemEnv(gym.Env):
         canvas.blit(round_text, (10, 10))  # Move round number higher
         canvas.blit(turn_text, (10, 30))  # Keep turn text below round number
         
+        # Ensure y is initialized before usage
+        y = 60  # Fixed y position for the golem cards
+
         # === GOLEM CARDS IN MARKET ===
 
         # Define card dimensions
@@ -483,12 +489,11 @@ class CenturyGolemEnv(gym.Env):
         # Draw golem cards
         for i, golem_card in enumerate(self.golem_market):
             x = margin + i * (card_width + margin)
-            y = 60  # Fixed y position
 
             # Draw card background
             pygame.draw.rect(canvas, (69, 69, 69), (x, y, card_width, card_height), border_radius=10)
             pygame.draw.rect(canvas, (176, 176, 176), (x, y, card_width, card_height), width=3, border_radius=10)
-            
+
             # Draw letter "G" in blue at the center of the card (underneath crystals and points)
             font_large = pygame.font.Font(None, 50)  # Larger font size
             g_text = font_large.render("G", True, (92, 92, 92, 100))  # Blue color, semi-transparent
@@ -758,6 +763,49 @@ class CenturyGolemEnv(gym.Env):
         # Display text on the canvas
         canvas.blit(random_golem_count_text, (10, random_golem_info_y))
         canvas.blit(random_golem_points_text, (10, random_golem_info_y + 25))  # Points below count
+
+        # === FINAL GAME RESULT (SHOW ONLY IF GAME HAS ENDED) ===
+        if self.winner:
+            result_separator_y = random_golem_info_y + 50  # Space below Random’s info
+            pygame.draw.line(canvas, (0, 0, 0), (10, result_separator_y), (self.window_size - 10, result_separator_y), 3)  # Black horizontal line
+            
+            # Define font for final result
+            font_large = pygame.font.Font(None, 24)
+            font_winner = pygame.font.Font(None, 24)
+
+            # Construct text
+            score_text = f"Player DQN    vs    Player Random"
+            points_text = f"{self.agent_final_points}                     {self.opponent_final_points}"
+            if self.winner == self.agent:
+                winner_text = f"WINNER: Player DQN"
+            elif self.winner == self.opponent:
+                winner_text = f"WINNER: Player Random"
+            else:
+                winner_text = "TIE"
+
+            # Render text
+            score_surface = font_large.render(score_text, True, (0, 0, 0))
+            points_surface = font_large.render(points_text, True, (0, 0, 0))
+            winner_surface = font_winner.render(winner_text, True, (201, 134, 0))  # Gold text for emphasis
+
+            # Centered positioning
+            center_x = self.window_size // 2
+            result_y = result_separator_y + 20
+
+            canvas.blit(score_surface, (center_x - score_surface.get_width() // 2, result_y))
+            canvas.blit(points_surface, (center_x - points_surface.get_width() // 2, result_y + 30))
+            canvas.blit(winner_surface, (center_x - winner_surface.get_width() // 2, result_y + 70))
+
+            pygame.display.update()
+
+            # === RECORD FINAL FRAMES TO VIDEO (EXTRA FRAMES FOR WINNER SCREEN) ===
+            if self.record_session:
+                for _ in range(self.fps * 3):  # Record for 3 seconds (adjust if needed)
+                    frame = pygame.surfarray.array3d(pygame.display.get_surface())  # Capture screen
+                    frame = np.transpose(frame, (1, 0, 2))  # Correct dimension order for OpenCV
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
+                    self.video_writer.write(frame)  # Save extra frames
+                    pygame.time.delay(1000 // self.fps)  # Delay to maintain frame rate
         
         # === RECORD FRAME INTO VIDEO ===
         if self.record_session:
@@ -782,9 +830,20 @@ class CenturyGolemEnv(gym.Env):
             
     def close(self):
         if self.record_session and self.video_writer is not None:
-            self.video_writer.release()  # Save and finalize the MP4 file
+            print("Finalizing video recording...")
+
+            # If game ended, add a few more frames to show winner
+            if self.winner:
+                for _ in range(self.fps * 3):  # Record extra 3 seconds
+                    frame = pygame.surfarray.array3d(pygame.display.get_surface())
+                    frame = np.transpose(frame, (1, 0, 2))
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    self.video_writer.write(frame)
+                    pygame.time.delay(1000 // self.fps)
+
+            self.video_writer.release()  # Save and finalize MP4
             print(f"Video saved as {self.video_output_path}")
-            pygame.display.quit()
-            pygame.quit()
-            
+
+        pygame.display.quit()
+        pygame.quit()
         print("=== CLOSE ENVIRONMENT ===")
