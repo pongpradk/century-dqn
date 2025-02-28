@@ -1,9 +1,11 @@
-from enum import Enum
-import gymnasium as gym
-from gymnasium import spaces
-import numpy as np
 import random
 import pygame
+import cv2
+import os
+import numpy as np
+import gymnasium as gym
+from gymnasium import spaces
+from enum import Enum
 
 class Player:
     
@@ -56,7 +58,7 @@ class Actions(Enum):
 class CenturyGolemEnv(gym.Env):
     metadata = {"render_modes": ["text", "human"], "render_fps": 0.5}
     
-    def __init__(self, render_mode=None):
+    def __init__(self, render_mode=None, record_session=False):
         
         self.action_space = spaces.Discrete(17)
         
@@ -124,6 +126,15 @@ class CenturyGolemEnv(gym.Env):
         self.window_size = 700  # Size of the render window
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
+        
+        # Record
+        self.record_session = record_session  # Enable/disable recording
+        self.frame_count = 0  # Track frame number
+        self.video_output_path = "session.mp4"  # Output video file name
+        self.fps = 1  # Frame rate (match render_fps)
+        
+        if self.record_session:
+            self.video_writer = None  # Initialize later when first frame is captured
     
     def _get_obs(self, player):
         # Returns observation from the perspective of the player
@@ -747,17 +758,33 @@ class CenturyGolemEnv(gym.Env):
         # Display text on the canvas
         canvas.blit(random_golem_count_text, (10, random_golem_info_y))
         canvas.blit(random_golem_points_text, (10, random_golem_info_y + 25))  # Points below count
+        
+        # === RECORD FRAME INTO VIDEO ===
+        if self.record_session:
+            # Capture screen pixels properly
+            frame = pygame.surfarray.array3d(pygame.display.get_surface())  # Capture full display
+            frame = np.transpose(frame, (1, 0, 2))  # Correct dimension order for OpenCV
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
+
+            # Initialize video writer when the first frame is captured
+            if self.video_writer is None:
+                height, width, _ = frame.shape
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4 codec
+                self.video_writer = cv2.VideoWriter(self.video_output_path, fourcc, self.fps, (width, height))
+
+            self.video_writer.write(frame)  # Write frame to video
 
         # Display updates
         self.window.blit(canvas, (0, 0))
         pygame.event.pump()
         pygame.display.update()
         self.clock.tick(self.metadata["render_fps"])
-
+            
     def close(self):
-        if self.window is not None:
+        if self.record_session and self.video_writer is not None:
+            self.video_writer.release()  # Save and finalize the MP4 file
+            print(f"Video saved as {self.video_output_path}")
             pygame.display.quit()
             pygame.quit()
-    
-    def close(self):
+            
         print("=== CLOSE ENVIRONMENT ===")

@@ -1,7 +1,7 @@
 import gymnasium
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
-env = gymnasium.make('gymnasium_env/CenturyGolem-v7', render_mode='human')
+env = gymnasium.make('gymnasium_env/CenturyGolem-v7', render_mode='human', record_session=True)
 # env = FlattenObservation(env)
 import numpy as np
 
@@ -116,5 +116,5 @@ def dqn_vs_random(turns=5):
 # custom_actions([1,2,3,4,5]) # get all merchant cards
 # custom_actions([5,0,11,0,12]) # get one golem
 # input_action()
-random(50)
-# play_against_random(12)
+random(10)
+# play_against_random(20)
