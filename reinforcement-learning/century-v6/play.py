@@ -62,7 +62,7 @@ def plot_rewards(calculate_mean=1):
 
 if __name__ == '__main__':
 
-    env = gym.make('gymnasium_env/CenturyGolem-v6', render_mode='human')
+    env = gym.make('gymnasium_env/CenturyGolem-v6', render_mode='text')
     # env = gym.make('gymnasium_env/CenturyGolem-v7', render_mode='human')
     env = FlattenObservation(env)
     state, info = env.reset()
