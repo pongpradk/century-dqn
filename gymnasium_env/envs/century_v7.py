@@ -121,7 +121,7 @@ class CenturyGolemEnv(gym.Env):
         # Render
         self.window = None
         self.clock = None
-        self.window_size = 600  # Size of the render window
+        self.window_size = 700  # Size of the render window
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
     
@@ -551,42 +551,84 @@ class CenturyGolemEnv(gym.Env):
                         col = 0
                         row += 1
         
-        # === PLAYER CRYSTALS ===
+        # === SEPARATOR LINE ===
+        separator_y = merchant_y + card_height + 10  # Position under merchant cards
+        pygame.draw.line(canvas, (0, 0, 0), (10, separator_y), (self.window_size - 10, separator_y), 3)  # Black horizontal line
         
-        # Define font
-        font = pygame.font.Font(None, 22)
-        
-        # Define positions for player crystals
-        player_start_x = 10  # Left-aligned
-        player_start_y = merchant_y + card_height + 20
-        circle_radius = 7
-        circle_spacing = 16  # Space between circles
+        # === DQN PLAYER INFO ===
 
-        # Draw player labels
+        player_start_y = separator_y + 15  # Space below separator
+
+        # Draw DQN player label
         agent_label = font.render("DQN", True, (0, 0, 0))
-        opponent_label = font.render("Random", True, (0, 0, 0))
-        canvas.blit(agent_label, (player_start_x, player_start_y))
-        canvas.blit(opponent_label, (player_start_x, player_start_y + 20))  # Opponent below agent
+        canvas.blit(agent_label, (10, player_start_y))
 
-        # Draw agent's crystals
-        x_offset = player_start_x + 80  # Start drawing circles after label
-        y_offset = player_start_y + 7  # Align vertically with text
+        # Draw DQN player's crystals
+        x_offset = 70  # Align circles next to player name
+        y_offset = player_start_y + 7
+        circle_radius = 7
+        circle_spacing = 16
+
         for _ in range(self.agent.yellow):
             pygame.draw.circle(canvas, (255, 215, 0), (x_offset, y_offset), circle_radius)  # Yellow
             x_offset += circle_spacing
         for _ in range(self.agent.green):
             pygame.draw.circle(canvas, (0, 128, 0), (x_offset, y_offset), circle_radius)  # Green
             x_offset += circle_spacing
+        
+        # === DQN's OWNED MERCHANT CARDS ===
+        merchant_card_y = player_start_y + 30  # Below player crystals
+        merchant_card_x = 10  # Start position for displaying cards
+        merchant_card_width = 50  # Smaller than market cards
+        merchant_card_height = 70
+        merchant_card_margin = 10
 
-        # Draw opponent's crystals
-        x_offset = player_start_x + 80
-        y_offset = player_start_y + 27  # Opponent row
-        for _ in range(self.opponent.yellow):
-            pygame.draw.circle(canvas, (255, 215, 0), (x_offset, y_offset), circle_radius)
-            x_offset += circle_spacing
-        for _ in range(self.opponent.green):
-            pygame.draw.circle(canvas, (0, 128, 0), (x_offset, y_offset), circle_radius)
-            x_offset += circle_spacing
+        # Filter all owned merchant cards (both playable and unplayable)
+        owned_merchant_cards = [(self.merchant_deck[i + 1], status) for i, status in enumerate(self.agent.merchant_cards) if status > 0]
+
+        # Draw merchant cards
+        for i, (merchant_card, status) in enumerate(owned_merchant_cards):
+            x = merchant_card_x + i * (merchant_card_width + merchant_card_margin)
+
+            # Determine color based on playability
+            is_playable = status == 2  # 2 = playable, 1 = unplayable
+            card_color = (69, 69, 69) if is_playable else (100, 100, 100)  # Darker for unplayable
+            border_color = (176, 176, 176) if is_playable else (140, 140, 140)  # Greyed border
+
+            # Draw card background
+            pygame.draw.rect(canvas, card_color, (x, merchant_card_y, merchant_card_width, merchant_card_height), border_radius=10)
+            pygame.draw.rect(canvas, border_color, (x, merchant_card_y, merchant_card_width, merchant_card_height), width=2, border_radius=10)
+
+            # Draw "M" in the center of the card (Faded for unplayable)
+            font_large = pygame.font.Font(None, 36)
+            m_text_color = (200, 200, 200) if is_playable else (150, 150, 150)  # Lighter for unplayable
+            m_text = font_large.render("M", True, m_text_color)
+            text_x = x + (merchant_card_width // 2) - (m_text.get_width() // 2)
+            text_y = merchant_card_y + (merchant_card_height // 2) - (m_text.get_height() // 2)
+            canvas.blit(m_text, (text_x, text_y))
+
+            # Draw the merchant card's crystals (Faded for unplayable)
+            cost_x = x + 10  # Left padding
+            cost_y = merchant_card_y + 10  # Top padding
+            circle_radius = 5  # Smaller circle size
+            col = 0  # Track column
+            row = 0  # Track row index
+            max_per_row = 2  # Two per row
+            row_offset = 14  # Vertical spacing
+            col_offset = 14  # Horizontal spacing
+
+            for color, amount in merchant_card.gain.items():
+                for _ in range(amount):
+                    faded_color = (255, 215, 0) if color == "yellow" else (0, 128, 0)  # Normal for playable
+                    if not is_playable:
+                        faded_color = (200, 200, 100) if color == "yellow" else (100, 180, 100)  # Lightened for unplayable
+                    
+                    pygame.draw.circle(canvas, faded_color, (cost_x + col * col_offset, cost_y + row * row_offset), circle_radius)
+
+                    col += 1
+                    if col >= max_per_row:
+                        col = 0
+                        row += 1
 
         # Display updates
         self.window.blit(canvas, (0, 0))
