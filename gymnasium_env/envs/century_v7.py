@@ -56,7 +56,7 @@ class Actions(Enum):
     getG5 = 16
 
 class CenturyGolemEnv(gym.Env):
-    metadata = {"render_modes": ["text", "human"], "render_fps": 4}
+    metadata = {"render_modes": ["text", "human"], "render_fps": 1}
     
     def __init__(self, render_mode=None, record_session=False):
         
@@ -477,7 +477,13 @@ class CenturyGolemEnv(gym.Env):
         canvas.blit(turn_text, (10, 30))  # Keep turn text below round number
         
         # Ensure y is initialized before usage
-        y = 60  # Fixed y position for the golem cards
+        y = 75  # Fixed y position for the golem cards
+        
+        # === MARKET LABELS ===
+        font_market = pygame.font.Font(None, 24)  # Define font size
+        # Golem Market Label
+        golem_market_text = font_market.render("GOLEM MARKET", True, (0, 0, 0))
+        canvas.blit(golem_market_text, (self.window_size // 2 - golem_market_text.get_width() // 2, y - 25))
 
         # === GOLEM CARDS IN MARKET ===
 
@@ -536,7 +542,11 @@ class CenturyGolemEnv(gym.Env):
         # === MERCHANT CARDS IN MARKET ===
 
         # Define merchant card positions
-        merchant_y = y + card_height + 15  # Below golem cards with spacing
+        merchant_y = y + card_height + 30  # Below golem cards with spacing
+        
+        # Merchant Market Label
+        merchant_market_text = font_market.render("MERCHANT MARKET", True, (0, 0, 0))
+        canvas.blit(merchant_market_text, (self.window_size // 2 - merchant_market_text.get_width() // 2, merchant_y - 25))
 
         # Draw merchant cards
         for i, merchant_card in enumerate(self.merchant_market):
