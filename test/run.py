@@ -1,21 +1,35 @@
 import gymnasium
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
-env = gymnasium.make('gymnasium_env/CenturyGolem-v7', render_mode='human', record_session=False)
+env = gymnasium.make('gymnasium_env/CenturyGolem-v8', render_mode='text')
 # env = FlattenObservation(env)
 import numpy as np
 
-# state, _ = env.reset()
-# done = False
-
-
 def random(n_timesteps=10):
-    state, _ = env.reset()
+    state, info = env.reset()
     
     for _ in range(n_timesteps):
+        print(info["valid_actions"])
+        
         # Pick random action
         action = env.action_space.sample()
-        state, reward, terminal, _, __ = env.step(action)
+        state, reward, terminal, _, info = env.step(action)
+        
+        if terminal:
+            break
+    
+    env.close()
+    
+def valid_random(n_timesteps=10):
+    state, info = env.reset()
+    
+    for _ in range(n_timesteps):
+        print(info["valid_actions"])
+        valid_mask = info["valid_actions"]
+        valid_indices = np.where(valid_mask == 1)[0]  # Get indices of valid actions
+        print(valid_indices)
+        action = np.random.choice(valid_indices)  # Choose a valid action randomly
+        state, reward, terminal, _, info = env.step(action)
         
         if terminal:
             break
@@ -51,13 +65,6 @@ def input_action():
     
     print(f"Reward: {tot_reward}")
     env.close()
-
-def turn_based(turns=10):
-    for _ in range(turns):
-        state, reward, terminal, _, __ = env.step(action)
-        
-        if terminal:
-            break
 
 def play_against_random(turns=5):
     state, info = env.reset()
@@ -112,9 +119,4 @@ def dqn_vs_random(turns=5):
     env.close()
     
 
-# custom_actions([1,2,3,4,5,6,7,8,9,10,12]) # get golem
-# custom_actions([1,2,3,4,5]) # get all merchant cards
-# custom_actions([5,0,11,0,12]) # get one golem
-# input_action()
-random(10)
-# play_against_random(20)
+valid_random(30)

@@ -6,21 +6,6 @@ register(
 )
 
 register(
-    id="gymnasium_env/CenturyGolem-v0",
-    entry_point="gymnasium_env.envs:CenturyGolemEnv",
-)
-
-register(
-    id="gymnasium_env/CenturyGolem-v1",
-    entry_point="gymnasium_env.envs:CenturyGolemEnvV1",
-)
-
-register(
-    id="gymnasium_env/CenturyGolem-v2",
-    entry_point="gymnasium_env.envs:CenturyGolemEnvV2",
-)
-
-register(
     id="gymnasium_env/CenturyGolem-v3",
     entry_point="gymnasium_env.envs:CenturyGolemEnv",
 )
@@ -42,5 +27,10 @@ register(
 
 register(
     id="gymnasium_env/CenturyGolem-v7",
+    entry_point="gymnasium_env.envs:CenturyGolemEnv",
+)
+
+register(
+    id="gymnasium_env/CenturyGolem-v8",
     entry_point="gymnasium_env.envs:CenturyGolemEnv",
 )
