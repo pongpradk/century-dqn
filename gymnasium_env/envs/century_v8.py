@@ -1,11 +1,9 @@
 '''
 Century: Golem Edition
-Version 8.0
+Version 8.1
 Changes:
 - merchant trade cards
-- tokens
 - redefined rewards
-- valid actions masking
 '''
 
 import random
@@ -23,7 +21,7 @@ class Player:
         self.yellow = 3
         self.green = 0
         # status of each merchant card for this player
-        self.merchant_cards = [2] + [0] * 5 # 0 = not owned, 1 = owned but unplayable, 2 = owned and playable
+        self.merchant_cards = [2] + [0] * 8 # 0 = not owned, 1 = owned but unplayable, 2 = owned and playable
         self.golem_count = 0
         self.points = 0
 
@@ -52,43 +50,47 @@ class Actions(Enum):
     getM4 = 3
     getM5 = 4
     getM6 = 5
-    useM1 = 6
-    useM2 = 7
-    useM3 = 8
-    useM4 = 9
-    useM5 = 10
-    useM6 = 11
-    getG1 = 12
-    getG2 = 13
-    getG3 = 14
-    getG4 = 15
-    getG5 = 16
+    getM7 = 6
+    getM8 = 7
+    getM9 = 8
+    useM1 = 9
+    useM2 = 10
+    useM3 = 11
+    useM4 = 12
+    useM5 = 13
+    useM6 = 14
+    useM7= 15
+    useM8 = 16
+    useM9 = 17
+    getG1 = 18
+    getG2 = 19
+    getG3 = 20
+    getG4 = 21
+    getG5 = 22
 
 class CenturyGolemEnv(gym.Env):
     metadata = {"render_modes": ["text", "human"], "render_fps": 1}
     
     def __init__(self, render_mode=None, record_session=False):
         
-        self.action_space = spaces.Discrete(17)
+        self.action_space = spaces.Discrete(23)
         
         # Open information
         self.observation_space = spaces.Dict({
-            "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7]),  # Allow 7 as placeholder for empty
-            "golem_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),  # Allow 5 as placeholder for empty
+            "merchant_market": spaces.MultiDiscrete([10, 10, 10, 10, 10, 10]),
+            "golem_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),
             
             "agent_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "agent_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
-            "agent_merchant_cards": spaces.MultiDiscrete([3] * 6),
+            "agent_merchant_cards": spaces.MultiDiscrete([3] * 9),
             "agent_golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),  # New: number of golem cards owned
             "agent_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
             
             "opponent_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
             "opponent_green": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
-            "opponent_merchant_cards": spaces.MultiDiscrete([3] * 6),
+            "opponent_merchant_cards": spaces.MultiDiscrete([3] * 9),
             "opponent_golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),
             "opponent_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
-            
-            "current_player": spaces.Discrete(2),
         })
         
         self.merchant_deck = {
@@ -98,10 +100,13 @@ class CenturyGolemEnv(gym.Env):
             4: MerchantCard(4, "Y1G1", "crystal", {"yellow": 1, "green": 1}),
             5: MerchantCard(5, "Y2G1", "crystal", {"yellow": 2, "green": 1}),
             6: MerchantCard(6, "G2", "crystal", {"yellow": 0, "green": 2}),
+            7: MerchantCard(7, "G1:Y3", "trade", {"yellow": 0, "green": 1}, {"yellow": 3, "green": 0}),
+            8: MerchantCard(8, "Y2:G2", "trade", {"yellow": 2, "green": 0}, {"yellow": 0, "green": 2}),
+            9: MerchantCard(9, "Y3:G3", "trade", {"yellow": 3, "green": 0}, {"yellow": 0, "green": 3}),
         }
 
         self.merchant_market = random.sample(
-            [card for cid, card in self.merchant_deck.items() if cid != 1], 5 # draw 3 cards to market, excluding M1
+            [card for cid, card in self.merchant_deck.items() if cid != 1], 6 # draw 3 cards to market, excluding M1
         )
         
         self.golem_deck = {
@@ -155,8 +160,8 @@ class CenturyGolemEnv(gym.Env):
         merchant_cards_state = np.array(agent.merchant_cards, dtype=np.int32)
 
         merchant_market_state = [card.card_id for card in self.merchant_market]
-        while len(merchant_market_state) < 5:
-            merchant_market_state.append(6)
+        while len(merchant_market_state) < 6:
+            merchant_market_state.append(9)
         
         golem_market_state = [card.card_id for card in self.golem_market]
         while len(golem_market_state) < 5:
@@ -177,8 +182,6 @@ class CenturyGolemEnv(gym.Env):
             "opponent_merchant_cards": np.array(opponent.merchant_cards, dtype=np.int32),
             "opponent_golem_count": np.array([opponent.golem_count], dtype=np.int32),
             "opponent_points": np.array([opponent.points], dtype=np.int32),
-            
-            "current_player": int(self.current_player.player_id - 1),  # Convert 1/2 to 0/1
         }
 
     def _get_info(self):
@@ -196,7 +199,7 @@ class CenturyGolemEnv(gym.Env):
         [setattr(card, 'owned', card.card_id == 1) for card in self.merchant_deck.values()]
         
         self.merchant_market = random.sample(
-            [card for cid, card in self.merchant_deck.items() if cid != 1], 5 # draw 3 cards to market, excluding M1
+            [card for cid, card in self.merchant_deck.items() if cid != 1], 6
         )
         
         [setattr(card, 'owned', card.card_id == 1) for card in self.golem_deck.values()]
@@ -210,7 +213,7 @@ class CenturyGolemEnv(gym.Env):
         self.current_player.yellow, self.other_player.yellow = 3, 4
         for player in (self.agent, self.opponent):
             player.green = 0
-            player.merchant_cards = [2] + [0] * 5
+            player.merchant_cards = [2] + [0] * 8
             player.golem_count = 0
             player.points = 0
             
@@ -234,20 +237,20 @@ class CenturyGolemEnv(gym.Env):
 
         valid_actions[Actions.rest.value] = 0
         # Rest is valid if any merchant card is unplayable
-        for i in range(Actions.useM1.value, Actions.useM6.value + 1):
+        for i in range(Actions.useM1.value, Actions.useM9.value + 1):
             card_idx = i - Actions.useM1.value
             if player.merchant_cards[card_idx] == 1:  # If owned but unplayable
                 valid_actions[Actions.rest.value] = 1
                 break
 
         # Get merchant card actions
-        for i in range(Actions.getM2.value, Actions.getM6.value + 1):
+        for i in range(Actions.getM2.value, Actions.getM9.value + 1):
             card_id = i + 1
             if self.merchant_deck[card_id] in self.merchant_market:
                 valid_actions[i] = 1
 
         # Use merchant card actions
-        for i in range(Actions.useM1.value, Actions.useM6.value + 1):
+        for i in range(Actions.useM1.value, Actions.useM9.value + 1):
             card_idx = i - Actions.useM1.value
             if player.merchant_cards[card_idx] == 2:  # if playable
                 valid_actions[i] = 1
@@ -320,7 +323,7 @@ class CenturyGolemEnv(gym.Env):
             reward -= 0.1
             
         # Get a merchant card
-        elif Actions.getM2.value <= action <= Actions.getM6.value:
+        elif Actions.getM2.value <= action <= Actions.getM9.value:
             card_id = action + 1 # e.g. action 1 = get M2
             
             # Check if card is in market
@@ -343,8 +346,8 @@ class CenturyGolemEnv(gym.Env):
                 reward += 1
                 
         # Use a merchant card
-        elif Actions.useM1.value <= action <= Actions.useM6.value:
-            card_id, card_idx = action - 5, action - 6 # e.g. action 10 = use M5 = card_id 5 = card_idx 4
+        elif Actions.useM1.value <= action <= Actions.useM9.value:
+            card_id, card_idx = action - Actions.getM9.value, action - Actions.getM9.value - 1
             if self.current_player.merchant_cards[card_idx] == 2: # if card is playable    
                 self.current_player.yellow += self.merchant_deck[card_id].gain['yellow']
                 self.current_player.green += self.merchant_deck[card_id].gain['green']

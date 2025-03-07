@@ -2,8 +2,6 @@
 Century: Golem Edition
 Version 8.0
 Changes:
-- merchant trade cards
-- tokens
 - redefined rewards
 - valid actions masking
 '''
