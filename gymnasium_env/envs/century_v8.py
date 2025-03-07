@@ -59,7 +59,7 @@ class Actions(Enum):
     useM4 = 12
     useM5 = 13
     useM6 = 14
-    useM7= 15
+    useM7 = 15
     useM8 = 16
     useM9 = 17
     getG1 = 18
@@ -94,15 +94,15 @@ class CenturyGolemEnv(gym.Env):
         })
         
         self.merchant_deck = {
-            1: MerchantCard(1, "Y2", "crystal", {"yellow": 2, "green": 0}, None, True),
-            2: MerchantCard(2, "Y3", "crystal", {"yellow": 3, "green": 0}),
-            3: MerchantCard(3, "Y4", "crystal", {"yellow": 4, "green": 0}),
-            4: MerchantCard(4, "Y1G1", "crystal", {"yellow": 1, "green": 1}),
-            5: MerchantCard(5, "Y2G1", "crystal", {"yellow": 2, "green": 1}),
-            6: MerchantCard(6, "G2", "crystal", {"yellow": 0, "green": 2}),
-            7: MerchantCard(7, "G1:Y3", "trade", {"yellow": 0, "green": 1}, {"yellow": 3, "green": 0}),
-            8: MerchantCard(8, "Y2:G2", "trade", {"yellow": 2, "green": 0}, {"yellow": 0, "green": 2}),
-            9: MerchantCard(9, "Y3:G3", "trade", {"yellow": 3, "green": 0}, {"yellow": 0, "green": 3}),
+            1: MerchantCard(1, "Y2", "crystal", gain={"yellow": 2, "green": 0}, owned = True),
+            2: MerchantCard(2, "Y3", "crystal", gain={"yellow": 3, "green": 0}),
+            3: MerchantCard(3, "Y4", "crystal", gain={"yellow": 4, "green": 0}),
+            4: MerchantCard(4, "Y1G1", "crystal", gain={"yellow": 1, "green": 1}),
+            5: MerchantCard(5, "Y2G1", "crystal", gain={"yellow": 2, "green": 1}),
+            6: MerchantCard(6, "G2", "crystal", gain={"yellow": 0, "green": 2}),
+            7: MerchantCard(7, "G1:Y3", "trade", cost={"yellow": 0, "green": 1}, gain={"yellow": 3, "green": 0}),
+            8: MerchantCard(8, "Y2:G2", "trade", cost={"yellow": 2, "green": 0}, gain={"yellow": 0, "green": 2}),
+            9: MerchantCard(9, "Y3:G3", "trade", cost={"yellow": 3, "green": 0}, gain={"yellow": 0, "green": 3}),
         }
 
         self.merchant_market = random.sample(
@@ -252,8 +252,16 @@ class CenturyGolemEnv(gym.Env):
         # Use merchant card actions
         for i in range(Actions.useM1.value, Actions.useM9.value + 1):
             card_idx = i - Actions.useM1.value
+
             if player.merchant_cards[card_idx] == 2:  # if playable
-                valid_actions[i] = 1
+                card = self.merchant_deck.get(card_idx + 1)  # Get corresponding merchant card
+                if card.card_type == "crystal":
+                    valid_actions[i] = 1  # Always valid for crystal-gaining cards
+                elif card.card_type == "trade":
+                    # Ensure the player has enough crystals to trade
+                    if (player.yellow >= card.cost.get("yellow", 0) and
+                        player.green >= card.cost.get("green", 0)):
+                        valid_actions[i] = 1
 
         # Get golem card actions
         for i in range(Actions.getG1.value, Actions.getG5.value + 1):
@@ -267,23 +275,6 @@ class CenturyGolemEnv(gym.Env):
         return valid_actions    
 
     # Remove and penalize excess crystals
-    def _remove_excess_crystals(self):
-        total_crystals = self.current_player.yellow + self.current_player.green
-        if total_crystals > 10:
-            excess = total_crystals - 10
-            penalty = 1.0 * excess
-            # Remove excess starting with yellow, then green
-            if self.current_player.yellow >= excess:
-                self.current_player.yellow -= excess
-            else:
-                excess -= self.current_player.yellow
-                self.current_player.yellow = 0
-                self.current_player.green = max(0, self.current_player.green - excess)
-            
-            return penalty
-        
-        return 0
-
     def _remove_excess_crystals(self):
         total_crystals = self.current_player.yellow + self.current_player.green
         if total_crystals > 10:
@@ -344,16 +335,32 @@ class CenturyGolemEnv(gym.Env):
                     self.merchant_market.append(new_card)
                 
                 reward += 1
-                
+
         # Use a merchant card
         elif Actions.useM1.value <= action <= Actions.useM9.value:
-            card_id, card_idx = action - Actions.getM9.value, action - Actions.getM9.value - 1
-            if self.current_player.merchant_cards[card_idx] == 2: # if card is playable    
-                self.current_player.yellow += self.merchant_deck[card_id].gain['yellow']
-                self.current_player.green += self.merchant_deck[card_id].gain['green']
-                self.current_player.merchant_cards[card_idx] = 1 # set card status to owned but unplayable
-                
-                reward += (0.5 * self.merchant_deck[card_id].gain['yellow']) + (1 * self.merchant_deck[card_id].gain['green'])
+            card_idx = action - Actions.useM1.value
+            card = self.merchant_deck.get(card_idx + 1)
+
+            if self.current_player.merchant_cards[card_idx] == 2 and card:  # Check if playable
+                if card.card_type == "crystal":
+                    self.current_player.yellow += card.gain.get('yellow', 0)
+                    self.current_player.green += card.gain.get('green', 0)
+                    reward += (0.5 * card.gain.get('yellow', 0)) + (1 * card.gain.get('green', 0))
+                elif card.card_type == "trade":
+                    # Ensure the player has enough crystals to trade before applying changes
+                    if (self.current_player.yellow >= card.cost.get("yellow", 0) and
+                        self.current_player.green >= card.cost.get("green", 0)):
+                        
+                        self.current_player.yellow -= card.cost.get("yellow", 0)
+                        self.current_player.green -= card.cost.get("green", 0)
+                        self.current_player.yellow += card.gain.get("yellow", 0)
+                        self.current_player.green += card.gain.get("green", 0)
+
+                        loss = (0.5 * card.cost.get("yellow", 0)) + (1 * card.cost.get("green", 0))
+                        gain = (0.5 * card.gain.get("yellow", 0)) + (1 * card.gain.get("green", 0))
+                        reward += (gain - loss)
+
+                self.current_player.merchant_cards[card_idx] = 1  # Set to unplayable
         
         # Get a golem card
         elif Actions.getG1.value <= action <= Actions.getG5.value:

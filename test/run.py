@@ -118,4 +118,4 @@ def dqn_vs_random(turns=5):
     env.close()
     
 
-valid_random(10)
+valid_random(30)
