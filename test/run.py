@@ -24,7 +24,6 @@ def valid_random(n_timesteps=10):
     state, info = env.reset()
     
     for _ in range(n_timesteps):
-        print(info["valid_actions"])
         valid_mask = info["valid_actions"]
         valid_indices = np.where(valid_mask == 1)[0]  # Get indices of valid actions
         print(valid_indices)
@@ -119,4 +118,4 @@ def dqn_vs_random(turns=5):
     env.close()
     
 
-valid_random(30)
+valid_random(10)

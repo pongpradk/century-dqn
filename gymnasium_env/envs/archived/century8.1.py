@@ -73,7 +73,7 @@ class CenturyGolemEnv(gym.Env):
         
         # Open information
         self.observation_space = spaces.Dict({
-            "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7]),
+            "merchant_market": spaces.MultiDiscrete([7, 7, 7, 7, 7, 7]),
             "golem_market": spaces.MultiDiscrete([6, 6, 6, 6, 6]),
             
             "agent_yellow": spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32),
@@ -101,7 +101,7 @@ class CenturyGolemEnv(gym.Env):
         }
 
         self.merchant_market = random.sample(
-            [card for cid, card in self.merchant_deck.items() if cid != 1], 5 # draw 3 cards to market, excluding M1
+            [card for cid, card in self.merchant_deck.items() if cid != 1], 6 # draw 3 cards to market, excluding M1
         )
         
         self.golem_deck = {
@@ -155,8 +155,8 @@ class CenturyGolemEnv(gym.Env):
         merchant_cards_state = np.array(agent.merchant_cards, dtype=np.int32)
 
         merchant_market_state = [card.card_id for card in self.merchant_market]
-        while len(merchant_market_state) < 5:
-            merchant_market_state.append(6)
+        while len(merchant_market_state) < 6:
+            merchant_market_state.append(7)
         
         golem_market_state = [card.card_id for card in self.golem_market]
         while len(golem_market_state) < 5:
@@ -196,7 +196,7 @@ class CenturyGolemEnv(gym.Env):
         [setattr(card, 'owned', card.card_id == 1) for card in self.merchant_deck.values()]
         
         self.merchant_market = random.sample(
-            [card for cid, card in self.merchant_deck.items() if cid != 1], 5 # draw 3 cards to market, excluding M1
+            [card for cid, card in self.merchant_deck.items() if cid != 1], 6 # draw 3 cards to market, excluding M1
         )
         
         [setattr(card, 'owned', card.card_id == 1) for card in self.golem_deck.values()]
