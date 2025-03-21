@@ -1,7 +1,7 @@
 import gymnasium
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
-env = gymnasium.make('gymnasium_env/CenturyGolem-v8', render_mode='text')
+env = gymnasium.make('gymnasium_env/CenturyGolem-v9', render_mode='text')
 # env = FlattenObservation(env)
 import numpy as np
 
@@ -118,4 +118,4 @@ def dqn_vs_random(turns=5):
     env.close()
     
 
-valid_random(30)
+valid_random(10)
