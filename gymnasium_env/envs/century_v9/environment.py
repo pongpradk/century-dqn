@@ -303,29 +303,32 @@ class CenturyGolemEnv(gym.Env):
         valid_actions[Actions.rest.value] = 0
         # Rest is valid if any merchant card is unplayable
         for i in range(Actions.useM1.value, Actions.useM10.value + 1):
-            card_idx = i - Actions.useM1.value
-            if player.merchant_cards[card_idx] == 1:  # If owned but unplayable
+            card_index = i - Actions.useM1.value
+            if player.merchant_cards[card_index] == CardStatus.UNPLAYABLE.value:  # If owned but unplayable
                 valid_actions[Actions.rest.value] = 1
                 break
 
         # Get merchant card actions
         for i in range(Actions.getM3.value, Actions.getM10.value + 1):
-            card_id = i + 1
+            card_id = i + 2
             if self.merchant_deck[card_id] in self.merchant_market:
                 valid_actions[i] = 1
 
         # Use merchant card actions
         for i in range(Actions.useM1.value, Actions.useM10.value + 1):
-            card_idx = i - Actions.useM1.value
+            card_index = i - Actions.useM1.value
 
-            if player.merchant_cards[card_idx] == 2:  # if playable
-                card = self.merchant_deck.get(card_idx + 1)  # Get corresponding merchant card
+            if player.merchant_cards[card_index] == CardStatus.PLAYABLE.value:
+                card = self.merchant_deck.get(card_index + 1)
                 if card.card_type == "crystal":
                     valid_actions[i] = 1  # Always valid for crystal-gaining cards
                 elif card.card_type == "trade":
                     # Ensure the player has enough crystals to trade
                     if all(player.caravan[crystal] >= amount 
                           for crystal, amount in card.cost.items()):
+                        valid_actions[i] = 1
+                elif card.card_type == "upgrade":
+                    if player.caravan["yellow"] > 0:
                         valid_actions[i] = 1
 
         # Get golem card actions

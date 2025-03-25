@@ -39,6 +39,9 @@ def manual():
     state, info = env.reset()
     
     while 1:
+        valid_mask = info["valid_actions"]
+        valid_indices = np.where(valid_mask == 1)[0]  # Get indices of valid actions
+        print(valid_indices)
         action = int(input("Enter action: "))
         state, reward, terminal, _, info = env.step(action)
         
@@ -54,23 +57,6 @@ def custom_actions(action_sequence):
 
         if terminal:
             break
-    
-    print(f"Reward: {tot_reward}")
-    env.close()
-
-def input_action():
-    env.reset()
-    tot_reward = 0
-    try:
-        while 1:
-            action = int(input("Enter action: "))
-            state, reward, terminal, _, __ = env.step(action)
-            tot_reward += reward
-            
-            if terminal:
-                break
-    except KeyboardInterrupt:
-        pass
     
     print(f"Reward: {tot_reward}")
     env.close()
