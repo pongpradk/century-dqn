@@ -1,9 +1,11 @@
 import gymnasium
 import gymnasium_env
+import numpy as np
 from gymnasium.wrappers import FlattenObservation
+from gymnasium_env.envs.century_v9.enums import Actions
+
 env = gymnasium.make('gymnasium_env/CenturyGolem-v9', render_mode='text')
 # env = FlattenObservation(env)
-import numpy as np
 
 def random(n_timesteps=10):
     state, info = env.reset()
@@ -41,7 +43,8 @@ def manual():
     while 1:
         valid_mask = info["valid_actions"]
         valid_indices = np.where(valid_mask == 1)[0]  # Get indices of valid actions
-        print(valid_indices)
+        valid_actions = [f"{index}: {Actions(index).name}" for index in valid_indices]
+        print(valid_actions)
         action = int(input("Enter action: "))
         state, reward, terminal, _, info = env.step(action)
         
