@@ -9,9 +9,8 @@ def random(n_timesteps=10):
     state, info = env.reset()
     
     for _ in range(n_timesteps):
-        print(info["valid_actions"])
+        # print(info["valid_actions"])
         
-        # Pick random action
         action = env.action_space.sample()
         state, reward, terminal, _, info = env.step(action)
         
@@ -26,9 +25,10 @@ def valid_random(n_timesteps=10):
     for _ in range(n_timesteps):
         valid_mask = info["valid_actions"]
         valid_indices = np.where(valid_mask == 1)[0]  # Get indices of valid actions
-        print(valid_indices)
+        # print(valid_indices)
         action = np.random.choice(valid_indices)  # Choose a valid action randomly
         state, reward, terminal, _, info = env.step(action)
+        print(reward)
         
         if terminal:
             break
