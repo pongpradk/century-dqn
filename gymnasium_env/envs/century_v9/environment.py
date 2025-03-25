@@ -2,90 +2,18 @@ import random
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-from enum import Enum
 
-GAME_CONSTANTS = {
-    'MAX_CRYSTALS': 10,
-    'GOLEM_ENDGAME_THRESHOLD': 3,
-    'CRYSTAL_VALUES': {
-        'yellow': 0.5,
-        'green': 1.0
-    },
-    'REWARDS': {
-        'WIN': 100,
-        'TIE': 50,
-        'STEP': -0.01,
-        'REST': -0.1,
-        'GET_MERCHANT_CARD': 1
-    }
-}
-
-class Player:
-    
-    def __init__(self, player_id):
-        self.player_id = player_id
-        self.caravan = {
-            "yellow": 3,
-            "green": 0
-        }
-        # status of each merchant card for this player
-        self.merchant_cards = [2] + [0] * 8 # 0 = not owned, 1 = owned but unplayable, 2 = owned and playable
-        self.golem_count = 0
-        self.points = 0
-
-class MerchantCard:
-    def __init__(self, card_id, name, card_type, gain, cost=None, owned=False):
-        self.card_id = card_id
-        self.name = name
-        self.card_type = card_type
-        self.cost = cost
-        self.gain = gain
-        self.owned = owned
-
-class GolemCard:
-    def __init__(self, card_id, name, cost, points, owned=False):
-        self.card_id = card_id
-        self.name = name
-        self.cost = cost
-        self.points = points
-        self.owned = owned
-        
-class Actions(Enum):
-    rest = 0
-    getM2 = 1
-    getM3 = 2 # ADD +100 and -100 for reaching max_timesteps in DQN training code, else +50 for tie
-    getM4 = 3
-    getM5 = 4
-    getM6 = 5
-    getM7 = 6
-    getM8 = 7
-    getM9 = 8
-    useM1 = 9
-    useM2 = 10
-    useM3 = 11
-    useM4 = 12
-    useM5 = 13
-    useM6 = 14
-    useM7 = 15
-    useM8 = 16
-    useM9 = 17
-    getG1 = 18
-    getG2 = 19
-    getG3 = 20
-    getG4 = 21
-    getG5 = 22
-
-class CardStatus(Enum):
-    NOT_OWNED = 0
-    UNPLAYABLE = 1
-    PLAYABLE = 2
+from .constants import GAME_CONSTANTS
+from .models import Player, MerchantCard, GolemCard
+from .enums import Actions, CardStatus
+from .utils import calculate_total_points, remove_excess_crystals
 
 class CenturyGolemEnv(gym.Env):
     metadata = {"render_modes": ["text"], "render_fps": 1}
     
     def create_merchant_deck(self):
         return {
-            1: MerchantCard(1, "Y2", "crystal", gain={"yellow": 2, "green": 0}, owned = True),
+            1: MerchantCard(1, "Y2", "crystal", gain={"yellow": 2, "green": 0}, owned=True),
             2: MerchantCard(2, "Y3", "crystal", gain={"yellow": 3, "green": 0}),
             3: MerchantCard(3, "Y4", "crystal", gain={"yellow": 4, "green": 0}),
             4: MerchantCard(4, "Y1G1", "crystal", gain={"yellow": 1, "green": 1}),
@@ -128,16 +56,13 @@ class CenturyGolemEnv(gym.Env):
         return GAME_CONSTANTS['REWARDS']['REST']
     
     def _handle_get_merchant_card(self, action):
-        card_id = action + 1 # e.g. action 1 = get M2
+        card_id = action + 1  # e.g. action 1 = get M2
         
         if self.merchant_deck[card_id] in self.merchant_market:
             self.current_player.merchant_cards[action] = CardStatus.PLAYABLE.value
-
             self.merchant_deck[card_id].owned = True
-            
             self.merchant_market.remove(self.merchant_deck[card_id])
             self._draw_merchant_card()
-            
             return GAME_CONSTANTS['REWARDS']['GET_MERCHANT_CARD']
 
     def _handle_use_merchant_card(self, action):
@@ -185,7 +110,6 @@ class CenturyGolemEnv(gym.Env):
             return golem_card.points
     
     def __init__(self, render_mode=None, record_session=False):
-        
         self.action_space = spaces.Discrete(23)
         
         # Open information
@@ -215,7 +139,7 @@ class CenturyGolemEnv(gym.Env):
         
         self.merchant_deck = self.create_merchant_deck()
         self.merchant_market = random.sample(
-            [card for cid, card in self.merchant_deck.items() if cid != 1], 6 # draw 3 cards to market, excluding M1
+            [card for cid, card in self.merchant_deck.items() if cid != 1], 6
         )
         
         self.golem_deck = self.create_golem_deck()
@@ -296,8 +220,7 @@ class CenturyGolemEnv(gym.Env):
         }
     
     def reset(self, seed=None, options=None):
-        
-        print("Century: Golem Edition | Version 9.0\n")
+        print("Century: Golem Edition | Version 9.1\n")
         
         super().reset(seed=seed)
         
@@ -311,7 +234,7 @@ class CenturyGolemEnv(gym.Env):
         
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
-        self.current_player = random.choice([self.player1, self.player2]) # Choose which player to play first
+        self.current_player = random.choice([self.player1, self.player2])  # Choose which player to play first
         self.other_player = self.player1 if self.current_player == self.player2 else self.player2
         
         # Reset players
@@ -337,7 +260,6 @@ class CenturyGolemEnv(gym.Env):
         return observation, info
     
     def _get_valid_actions(self, player):
-
         valid_actions = np.zeros(self.action_space.n, dtype=np.int32)
 
         valid_actions[Actions.rest.value] = 0
@@ -379,28 +301,7 @@ class CenturyGolemEnv(gym.Env):
 
         return valid_actions    
 
-    # Remove and penalize excess crystals
-    def _remove_excess_crystals(self):
-        total_crystals = sum(self.current_player.caravan.values())
-        if total_crystals > GAME_CONSTANTS['MAX_CRYSTALS']:
-            excess = total_crystals - GAME_CONSTANTS['MAX_CRYSTALS']
-            # Remove from yellow first, then green
-            excess_yellow = min(excess, self.current_player.caravan["yellow"])
-            excess_green = excess - excess_yellow
-            self.current_player.caravan["yellow"] -= excess_yellow
-            self.current_player.caravan["green"] -= excess_green
-            
-            return (0.5 * excess_yellow) + (1 * excess_green)
-
-        return 0
-    
-    def calculate_total_points(self, player):
-        """Calculates total points for a player, including non-yellow crystals."""
-        crystal_points = player.caravan["green"]  # Assuming green crystals are worth 1 point
-        return player.points + crystal_points
-    
     def step(self, action):
-        
         if self.render_mode == "text":
             print(f"==== DQN | {Actions(int(action)).name} ====\n") if self.current_player.player_id == 1 else print(f"==== Random | {Actions(int(action)).name} ====\n")
             
@@ -426,7 +327,7 @@ class CenturyGolemEnv(gym.Env):
         elif Actions.getG1.value <= action <= Actions.getG5.value:
             reward += self._handle_get_golem_card(action)
 
-        reward -= self._remove_excess_crystals()
+        reward -= remove_excess_crystals(self.current_player)
         
         # Check if the endgame is triggered
         if not self.endgame_triggered and self.current_player.golem_count >= GAME_CONSTANTS['GOLEM_ENDGAME_THRESHOLD']:
@@ -437,8 +338,8 @@ class CenturyGolemEnv(gym.Env):
             terminated = True
 
             # Calculate final points for both players
-            self.player1_final_points = self.calculate_total_points(self.player1)
-            self.player2_final_points = self.calculate_total_points(self.player2)
+            self.player1_final_points = calculate_total_points(self.player1)
+            self.player2_final_points = calculate_total_points(self.player2)
             
             # If not player1's turn, the reward is reset, before calculation
             if self.current_player != self.player1:
@@ -503,4 +404,4 @@ class CenturyGolemEnv(gym.Env):
             print("")
             
     def close(self):
-        print("=== CLOSE ENVIRONMENT ===")
+        print("=== CLOSE ENVIRONMENT ===") 
