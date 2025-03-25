@@ -8,20 +8,24 @@ from .models import Player, MerchantCard, GolemCard
 from .enums import Actions, CardStatus
 from .utils import calculate_total_points, remove_excess_crystals
 
+class InvalidActionError(Exception):
+    pass
+
 class CenturyGolemEnv(gym.Env):
     metadata = {"render_modes": ["text"], "render_fps": 1}
     
     def create_merchant_deck(self):
         return {
             1: MerchantCard(1, "Y2", "crystal", gain={"yellow": 2, "green": 0}, owned=True),
-            2: MerchantCard(2, "Y3", "crystal", gain={"yellow": 3, "green": 0}),
-            3: MerchantCard(3, "Y4", "crystal", gain={"yellow": 4, "green": 0}),
-            4: MerchantCard(4, "Y1G1", "crystal", gain={"yellow": 1, "green": 1}),
-            5: MerchantCard(5, "Y2G1", "crystal", gain={"yellow": 2, "green": 1}),
-            6: MerchantCard(6, "G2", "crystal", gain={"yellow": 0, "green": 2}),
-            7: MerchantCard(7, "G1:Y3", "trade", cost={"yellow": 0, "green": 1}, gain={"yellow": 3, "green": 0}),
-            8: MerchantCard(8, "Y2:G2", "trade", cost={"yellow": 2, "green": 0}, gain={"yellow": 0, "green": 2}),
-            9: MerchantCard(9, "Y3:G3", "trade", cost={"yellow": 3, "green": 0}, gain={"yellow": 0, "green": 3}),
+            2: MerchantCard(2, "U2", "upgrade", gain=2, owned=True),
+            3: MerchantCard(3, "Y3", "crystal", gain={"yellow": 3, "green": 0}),
+            4: MerchantCard(4, "Y4", "crystal", gain={"yellow": 4, "green": 0}),
+            5: MerchantCard(5, "Y1G1", "crystal", gain={"yellow": 1, "green": 1}),
+            6: MerchantCard(6, "Y2G1", "crystal", gain={"yellow": 2, "green": 1}),
+            7: MerchantCard(7, "G2", "crystal", gain={"yellow": 0, "green": 2}),
+            8: MerchantCard(8, "G1:Y3", "trade", cost={"yellow": 0, "green": 1}, gain={"yellow": 3, "green": 0}),
+            9: MerchantCard(9, "Y2:G2", "trade", cost={"yellow": 2, "green": 0}, gain={"yellow": 0, "green": 2}),
+            10: MerchantCard(10, "Y3:G3", "trade", cost={"yellow": 3, "green": 0}, gain={"yellow": 0, "green": 3}),
         }
     
     def create_golem_deck(self):
@@ -36,7 +40,7 @@ class CenturyGolemEnv(gym.Env):
     def _draw_merchant_card(self):
         cards_in_deck = [
             card for cid, card in self.merchant_deck.items()
-            if cid != 1 and not card.owned and card not in self.merchant_market
+            if cid != 1 and cid != 2 and not card.owned and card not in self.merchant_market
         ]
         if cards_in_deck:
             new_card = random.choice(cards_in_deck)
@@ -52,46 +56,77 @@ class CenturyGolemEnv(gym.Env):
             self.golem_market.append(new_card)
     
     def _handle_rest(self):
-        self.current_player.merchant_cards = [2 if card == 1 else card for card in self.current_player.merchant_cards]
+        self.current_player.merchant_cards = [CardStatus.PLAYABLE.value if card == CardStatus.UNPLAYABLE.value else card for card in self.current_player.merchant_cards]
         return GAME_CONSTANTS['REWARDS']['REST']
     
     def _handle_get_merchant_card(self, action):
-        card_id = action + 1  # e.g. action 1 = get M2
+        card_id = action + 2 # e.g. M3 = action 1 + 2
         
         if self.merchant_deck[card_id] in self.merchant_market:
-            self.current_player.merchant_cards[action] = CardStatus.PLAYABLE.value
+            self.current_player.merchant_cards[card_id - 1] = CardStatus.PLAYABLE.value
             self.merchant_deck[card_id].owned = True
             self.merchant_market.remove(self.merchant_deck[card_id])
             self._draw_merchant_card()
             return GAME_CONSTANTS['REWARDS']['GET_MERCHANT_CARD']
 
+        raise InvalidActionError(f"Card M{card_id} is not in market")
+
+    def _handle_crystal_card(self, card, card_index):
+        for crystal, amount in card.gain.items():
+            self.current_player.caravan[crystal] += amount
+        self.current_player.merchant_cards[card_index] = CardStatus.UNPLAYABLE.value
+        return (GAME_CONSTANTS['CRYSTAL_VALUES']['yellow'] * card.gain.get('yellow', 0)) + (GAME_CONSTANTS['CRYSTAL_VALUES']['green'] * card.gain.get('green', 0))
+
+    def _handle_trade_card(self, card, card_index): 
+        # Check if player has enough crystals
+        if all(self.current_player.caravan[crystal] >= amount 
+                for crystal, amount in card.cost.items()):
+            # Apply the trade
+            for crystal, amount in card.cost.items():
+                self.current_player.caravan[crystal] -= amount
+            for crystal, amount in card.gain.items():
+                self.current_player.caravan[crystal] += amount
+
+            self.current_player.merchant_cards[card_index] = CardStatus.UNPLAYABLE.value
+            loss = (GAME_CONSTANTS['CRYSTAL_VALUES']['yellow'] * card.cost.get("yellow", 0)) + (GAME_CONSTANTS['CRYSTAL_VALUES']['green'] * card.cost.get("green", 0))
+            gain = (GAME_CONSTANTS['CRYSTAL_VALUES']['yellow'] * card.gain.get("yellow", 0)) + (GAME_CONSTANTS['CRYSTAL_VALUES']['green'] * card.gain.get("green", 0))
+            return (gain - loss)
+        
+        raise InvalidActionError(f"Not enough crystals for trade card {card.name}")
+
+    def _handle_upgrade_card(self, card, card_index):
+        crystals_upgraded = 0
+        for _ in range(card.gain):
+            if self.current_player.caravan["yellow"] > 0:
+                self.current_player.caravan["yellow"] -= 1
+                self.current_player.caravan["green"] += 1
+                crystals_upgraded += 1
+            else:
+                break
+        
+        if crystals_upgraded == 0:
+            raise InvalidActionError("No crystals can be upgraded")
+        
+        self.current_player.merchant_cards[card_index] = CardStatus.UNPLAYABLE.value
+        return crystals_upgraded
+
     def _handle_use_merchant_card(self, action):
-        card_idx = action - Actions.useM1.value
-        card = self.merchant_deck.get(card_idx + 1)
+        card_id = action - Actions.useM1.value + 1
+        card = self.merchant_deck.get(card_id)
+        card_index = card_id - 1
 
-        if self.current_player.merchant_cards[card_idx] == CardStatus.PLAYABLE.value and card:
+        if self.current_player.merchant_cards[card_index] == CardStatus.PLAYABLE.value and card:
             if card.card_type == "crystal":
-                for crystal, amount in card.gain.items():
-                    self.current_player.caravan[crystal] += amount
-                return (GAME_CONSTANTS['CRYSTAL_VALUES']['yellow'] * card.gain.get('yellow', 0)) + (GAME_CONSTANTS['CRYSTAL_VALUES']['green'] * card.gain.get('green', 0))
+                return self._handle_crystal_card(card, card_index)
             elif card.card_type == "trade":
-                # Check if player has enough crystals
-                if all(self.current_player.caravan[crystal] >= amount 
-                        for crystal, amount in card.cost.items()):
-                    # Apply the trade
-                    for crystal, amount in card.cost.items():
-                        self.current_player.caravan[crystal] -= amount
-                    for crystal, amount in card.gain.items():
-                        self.current_player.caravan[crystal] += amount
-
-                    loss = (GAME_CONSTANTS['CRYSTAL_VALUES']['yellow'] * card.cost.get("yellow", 0)) + (GAME_CONSTANTS['CRYSTAL_VALUES']['green'] * card.cost.get("green", 0))
-                    gain = (GAME_CONSTANTS['CRYSTAL_VALUES']['yellow'] * card.gain.get("yellow", 0)) + (GAME_CONSTANTS['CRYSTAL_VALUES']['green'] * card.gain.get("green", 0))
-                    return (gain - loss)
-
-            self.current_player.merchant_cards[card_idx] = CardStatus.UNPLAYABLE.value
+                return self._handle_trade_card(card, card_index)
+            elif card.card_type == "upgrade":
+                return self._handle_upgrade_card(card, card_index)
+        
+        raise InvalidActionError(f"Card M{card_id} is not playable or does not exist")
     
     def _handle_get_golem_card(self, action):
-        card_id = action - Actions.getG1.value + 1
+        card_id = action - Actions.getG1.value + 1 # e.g. G1 = 19 - 19 + 1
         golem_card = self.golem_deck[card_id]
         
         if (golem_card in self.golem_market and 
@@ -110,7 +145,7 @@ class CenturyGolemEnv(gym.Env):
             return golem_card.points
     
     def __init__(self, render_mode=None, record_session=False):
-        self.action_space = spaces.Discrete(23)
+        self.action_space = spaces.Discrete(24)
         
         # Open information
         crystal_types = ["yellow", "green"]  # Add more types here as needed
@@ -124,7 +159,7 @@ class CenturyGolemEnv(gym.Env):
                 crystal: spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32)
                 for crystal in crystal_types
             }),
-            "player1_merchant_cards": spaces.MultiDiscrete([3] * 9),
+            "player1_merchant_cards": spaces.MultiDiscrete([3] * 10),
             "player1_golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),
             "player1_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
             
@@ -132,14 +167,14 @@ class CenturyGolemEnv(gym.Env):
                 crystal: spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32)
                 for crystal in crystal_types
             }),
-            "player2_merchant_cards": spaces.MultiDiscrete([3] * 9),
+            "player2_merchant_cards": spaces.MultiDiscrete([3] * 10),
             "player2_golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),
             "player2_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
         })
         
         self.merchant_deck = self.create_merchant_deck()
         self.merchant_market = random.sample(
-            [card for cid, card in self.merchant_deck.items() if cid != 1], 6
+            [card for cid, card in self.merchant_deck.items() if cid != 1 and cid != 2], 6
         )
         
         self.golem_deck = self.create_golem_deck()
@@ -158,20 +193,8 @@ class CenturyGolemEnv(gym.Env):
         self.round = 1
         
         # Render
-        self.window = None
-        self.clock = None
-        self.window_size = 800  # Size of the render window
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
-        
-        # Record
-        self.record_session = record_session  # Enable/disable recording
-        self.frame_count = 0  # Track frame number
-        self.video_output_path = "session.mp4"  # Output video file name
-        self.fps = 1  # Frame rate (match render_fps)
-        
-        if self.record_session:
-            self.video_writer = None  # Initialize later when first frame is captured
         
         self.winner = None  # Stores winner's name ("DQN" or "Random")
         self.player1_final_points = 0  # Stores final DQN points
@@ -182,35 +205,50 @@ class CenturyGolemEnv(gym.Env):
         player1 = player
         player2 = self.player2 if player == self.player1 else self.player1
         
-        merchant_cards_state = np.array(player1.merchant_cards, dtype=np.int32)
+        # Ensure merchant cards are within [0, 2] range
+        merchant_cards_state = np.clip(np.array(player1.merchant_cards, dtype=np.int32), 0, 2)
 
-        merchant_market_state = [card.card_id for card in self.merchant_market]
+        # Ensure market states are within their bounds
+        merchant_market_state = [min(card.card_id, 9) for card in self.merchant_market]
         while len(merchant_market_state) < 6:
             merchant_market_state.append(9)
         
-        golem_market_state = [card.card_id for card in self.golem_market]
+        golem_market_state = [min(card.card_id, 5) for card in self.golem_market]
         while len(golem_market_state) < 5:
             golem_market_state.append(5)
+        
+        # Ensure caravan values are within [0, 20] range
+        player1_caravan = {
+            crystal: np.clip(np.array([amount], dtype=np.int32), 0, 20)
+            for crystal, amount in player1.caravan.items()
+        }
+        
+        player2_caravan = {
+            crystal: np.clip(np.array([amount], dtype=np.int32), 0, 20)
+            for crystal, amount in player2.caravan.items()
+        }
+        
+        # Ensure golem count is within [0, 5] range
+        player1_golem_count = np.clip(np.array([player1.golem_count], dtype=np.int32), 0, 5)
+        player2_golem_count = np.clip(np.array([player2.golem_count], dtype=np.int32), 0, 5)
+        
+        # Ensure points are within [0, 100] range
+        player1_points = np.clip(np.array([player1.points], dtype=np.int32), 0, 100)
+        player2_points = np.clip(np.array([player2.points], dtype=np.int32), 0, 100)
         
         return {
             "merchant_market": np.array(merchant_market_state, dtype=np.int32),
             "golem_market": np.array(golem_market_state, dtype=np.int32),
             
-            "player1_caravan": {
-                crystal: np.array([amount], dtype=np.int32)
-                for crystal, amount in player1.caravan.items()
-            },
+            "player1_caravan": player1_caravan,
             "player1_merchant_cards": merchant_cards_state,
-            "player1_golem_count": np.array([player1.golem_count], dtype=np.int32),
-            "player1_points": np.array([player1.points], dtype=np.int32),
+            "player1_golem_count": player1_golem_count,
+            "player1_points": player1_points,
             
-            "player2_caravan": {
-                crystal: np.array([amount], dtype=np.int32)
-                for crystal, amount in player2.caravan.items()
-            },
-            "player2_merchant_cards": np.array(player2.merchant_cards, dtype=np.int32),
-            "player2_golem_count": np.array([player2.golem_count], dtype=np.int32),
-            "player2_points": np.array([player2.points], dtype=np.int32),
+            "player2_caravan": player2_caravan,
+            "player2_merchant_cards": np.clip(np.array(player2.merchant_cards, dtype=np.int32), 0, 2),
+            "player2_golem_count": player2_golem_count,
+            "player2_points": player2_points,
         }
 
     def _get_info(self):
@@ -227,7 +265,7 @@ class CenturyGolemEnv(gym.Env):
         [setattr(card, 'owned', card.card_id == 1) for card in self.merchant_deck.values()]
         
         self.merchant_market = random.sample(
-            [card for cid, card in self.merchant_deck.items() if cid != 1], 6
+            [card for cid, card in self.merchant_deck.items() if cid != 1 and cid != 2], 6
         )
         
         [setattr(card, 'owned', card.card_id == 1) for card in self.golem_deck.values()]
@@ -241,7 +279,7 @@ class CenturyGolemEnv(gym.Env):
         self.current_player.caravan["yellow"], self.other_player.caravan["yellow"] = 3, 4
         for player in (self.player1, self.player2):
             player.caravan["green"] = 0
-            player.merchant_cards = [2] + [0] * 8
+            player.merchant_cards = [2, 2, 0, 0, 0, 0, 0, 0, 0, 0]
             player.golem_count = 0
             player.points = 0
             
@@ -264,20 +302,20 @@ class CenturyGolemEnv(gym.Env):
 
         valid_actions[Actions.rest.value] = 0
         # Rest is valid if any merchant card is unplayable
-        for i in range(Actions.useM1.value, Actions.useM9.value + 1):
+        for i in range(Actions.useM1.value, Actions.useM10.value + 1):
             card_idx = i - Actions.useM1.value
             if player.merchant_cards[card_idx] == 1:  # If owned but unplayable
                 valid_actions[Actions.rest.value] = 1
                 break
 
         # Get merchant card actions
-        for i in range(Actions.getM2.value, Actions.getM9.value + 1):
+        for i in range(Actions.getM3.value, Actions.getM10.value + 1):
             card_id = i + 1
             if self.merchant_deck[card_id] in self.merchant_market:
                 valid_actions[i] = 1
 
         # Use merchant card actions
-        for i in range(Actions.useM1.value, Actions.useM9.value + 1):
+        for i in range(Actions.useM1.value, Actions.useM10.value + 1):
             card_idx = i - Actions.useM1.value
 
             if player.merchant_cards[card_idx] == 2:  # if playable
@@ -318,10 +356,10 @@ class CenturyGolemEnv(gym.Env):
         if action == Actions.rest.value:
             reward += self._handle_rest()
         # Action: Get a merchant card
-        elif Actions.getM2.value <= action <= Actions.getM9.value:
+        elif Actions.getM3.value <= action <= Actions.getM10.value:
             reward += self._handle_get_merchant_card(action)
         # Action: Use a merchant card
-        elif Actions.useM1.value <= action <= Actions.useM9.value:
+        elif Actions.useM1.value <= action <= Actions.useM10.value:
             reward += self._handle_use_merchant_card(action)
         # Action: Get a golem card
         elif Actions.getG1.value <= action <= Actions.getG5.value:

@@ -6,12 +6,12 @@ class Player:
             "green": 0
         }
         # status of each merchant card for this player
-        self.merchant_cards = [2] + [0] * 8  # 0 = not owned, 1 = owned but unplayable, 2 = owned and playable
+        self.merchant_cards = [2, 2, 0, 0, 0, 0, 0, 0, 0, 0]  # 0 = not owned, 1 = owned but unplayable, 2 = owned and playable
         self.golem_count = 0
         self.points = 0
 
 class MerchantCard:
-    def __init__(self, card_id, name, card_type, gain, cost=None, owned=False):
+    def __init__(self, card_id, name, card_type, gain=None, cost=None, owned=False):
         self.card_id = card_id
         self.name = name
         self.card_type = card_type

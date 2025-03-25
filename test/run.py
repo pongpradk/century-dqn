@@ -25,15 +25,25 @@ def valid_random(n_timesteps=10):
     for _ in range(n_timesteps):
         valid_mask = info["valid_actions"]
         valid_indices = np.where(valid_mask == 1)[0]  # Get indices of valid actions
-        # print(valid_indices)
+        print(valid_indices)
         action = np.random.choice(valid_indices)  # Choose a valid action randomly
         state, reward, terminal, _, info = env.step(action)
-        print(reward)
+        # print(reward)
         
         if terminal:
             break
     
     env.close()
+
+def manual():
+    state, info = env.reset()
+    
+    while 1:
+        action = int(input("Enter action: "))
+        state, reward, terminal, _, info = env.step(action)
+        
+        if terminal:
+            break
 
 def custom_actions(action_sequence):
     tot_reward = 0
@@ -118,4 +128,4 @@ def dqn_vs_random(turns=5):
     env.close()
     
 
-valid_random(10)
+manual()
