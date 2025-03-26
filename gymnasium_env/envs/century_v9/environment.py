@@ -253,7 +253,8 @@ class CenturyGolemEnv(gym.Env):
         }
     
     def reset(self, seed=None, options=None):
-        print("Century: Golem Edition | Version 9.1\n")
+        if self.render_mode == "text":
+            print("Century: Golem Edition | Version 9.1\n")
         
         super().reset(seed=seed)
         

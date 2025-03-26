@@ -1,4 +1,3 @@
-import json
 import random
 import time
 import os
@@ -18,6 +17,22 @@ import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
 import sys; sys.path.append('..'); from random_agent import RandomAgent
 
+
+class DQNConfig:
+    def __init__(self, **kwargs):
+        self.gamma = kwargs.get('gamma', 0.99)
+        self.epsilon = kwargs.get('epsilon', 1.0)
+        self.epsilon_min = kwargs.get('epsilon_min', 0.01)
+        self.epsilon_decay = kwargs.get('epsilon_decay', 0.995)
+        self.learning_rate = kwargs.get('learning_rate', 0.001)
+        self.update_rate = kwargs.get('update_rate', 4)
+        self.batch_size = kwargs.get('batch_size', 32)
+        self.replay_buffer_size = kwargs.get('replay_buffer_size', 2000)
+        self.num_timesteps = kwargs.get('num_timesteps', 1000)
+        self.checkpoint_freq = kwargs.get('checkpoint_freq', 10)
+        self.model_save_freq = kwargs.get('model_save_freq', 50)
+
+
 class DQN(nn.Module):
     def __init__(self, state_size, action_size):
         super(DQN, self).__init__()
@@ -32,20 +47,20 @@ class DQN(nn.Module):
 
 
 class DQNAgent:
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, config):
         self.state_size = state_size
         self.action_size = action_size
 
         # Initialize Replay Buffer
-        self.replay_buffer = deque(maxlen=40000)
+        self.replay_buffer = deque(maxlen=config.replay_buffer_size)
 
         # Set algorithm hyperparameters
-        self.gamma = 0.99
-        self.epsilon = 1.0
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.98
-        self.learning_rate = 0.001
-        self.update_rate = 10
+        self.gamma = config.gamma
+        self.epsilon = config.epsilon
+        self.epsilon_min = config.epsilon_min
+        self.epsilon_decay = config.epsilon_decay
+        self.learning_rate = config.learning_rate
+        self.update_rate = config.update_rate
 
         # Create both Main and Target Neural Networks
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -171,7 +186,8 @@ class DQNAgent:
         print(f"Model saved at episode {episode}")
         return model_path
         
-def train_dqn(num_episodes=150, checkpoint_path=None, checkpoint_freq=50, model_save_freq=100):
+        
+def train_dqn(config, num_episodes, checkpoint_path=None):
     env = gym.make("gymnasium_env/CenturyGolem-v9")
     env = FlattenObservation(env)
     state, info = env.reset()
@@ -181,12 +197,12 @@ def train_dqn(num_episodes=150, checkpoint_path=None, checkpoint_freq=50, model_
     action_size = env.action_space.n
 
     # Define number of timesteps per episode and batch size
-    num_timesteps = 500
-    batch_size = 64
+    num_timesteps = config.num_timesteps
+    batch_size = config.batch_size
     time_step = 0
     rewards, epsilon_values = list(), list()
     
-    dqn_agent = DQNAgent(state_size, action_size) 
+    dqn_agent = DQNAgent(state_size, action_size, config) 
     opponent = RandomAgent(action_size)
     
     # Start episode counter
@@ -261,11 +277,11 @@ def train_dqn(num_episodes=150, checkpoint_path=None, checkpoint_freq=50, model_
             print(f'Time elapsed during EPISODE {ep+1}: {elapsed} seconds = {round(elapsed/60, 3)} minutes')
             
             # Save checkpoint every checkpoint_freq episodes
-            if (ep + 1) % checkpoint_freq == 0:
+            if (ep + 1) % config.checkpoint_freq == 0:
                 dqn_agent.save_checkpoint(ep + 1)
             
             # Save model every model_save_freq episodes
-            if (ep + 1) % model_save_freq == 0:
+            if (ep + 1) % config.model_save_freq == 0:
                 dqn_agent.save_model(ep + 1)
     
     except KeyboardInterrupt:
@@ -275,11 +291,22 @@ def train_dqn(num_episodes=150, checkpoint_path=None, checkpoint_freq=50, model_
         env.close()
 
 if __name__ == '__main__':
+    # Allow for command line arguments
     parser = argparse.ArgumentParser(description='Train DQN agent for Century game')
-    parser.add_argument('--episodes', type=int, default=500, help='Number of episodes to train')
-    parser.add_argument('--checkpoint', type=str, help='Path to checkpoint file to resume training')
-    parser.add_argument('--checkpoint-freq', type=int, default=100, help='Frequency to save checkpoints')
-    parser.add_argument('--model-save-freq', type=int, default=500, help='Frequency to save model versions')
+    parser.add_argument('--episodes', type=int, required=True, help='Number of episodes to train')
+    parser.add_argument('--checkpoint', type=str, required=True, help='Path to checkpoint file to resume training')
+    parser.add_argument('--checkpoint-freq', type=int, required=True, help='Frequency to save checkpoints')
+    parser.add_argument('--model-save-freq', type=int, required=True, help='Frequency to save model versions')
+    parser.add_argument('--gamma', type=float, required=True, help='Discount factor for future rewards')
+    parser.add_argument('--epsilon', type=float, required=True, help='Initial epsilon for exploration')
+    parser.add_argument('--epsilon-decay', type=float, required=True, help='Decay rate for epsilon')
+    parser.add_argument('--epsilon-min', type=float, required=True, help='Minimum epsilon value')
+    parser.add_argument('--learning-rate', type=float, required=True, help='Learning rate for optimizer')
+    parser.add_argument('--update-rate', type=int, required=True, help='Update rate for target network')
+    parser.add_argument('--batch-size', type=int, required=True, help='Batch size for training')
+    parser.add_argument('--replay-buffer-size', type=int, required=True, help='Size of the replay buffer')
+    parser.add_argument('--num-timesteps', type=int, required=True, help='Number of timesteps per episode')
     
     args = parser.parse_args()
-    train_dqn(args.episodes, args.checkpoint, args.checkpoint_freq, args.model_save_freq)
+    config = DQNConfig(**vars(args))
+    train_dqn(config, args.episodes, args.checkpoint)
