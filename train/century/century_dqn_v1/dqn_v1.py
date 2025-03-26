@@ -1,6 +1,9 @@
 import json
 import random
 import time
+import os
+import pickle
+import argparse
 from collections import deque
 
 import gymnasium as gym
@@ -12,7 +15,7 @@ from torch.nn import functional as F
 
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
-from .random_agent import RandomAgent
+import sys; sys.path.append('..'); from random_agent import RandomAgent
 
 class DQN(nn.Module):
     def __init__(self, state_size, action_size):
@@ -74,16 +77,21 @@ class DQNAgent:
 
         return state_batch, action_batch, reward_batch, next_state_batch, terminal_batch
 
-    def pick_epsilon_greedy_action(self, state):
-        # Pick random action with probability ε
-        if random.uniform(0, 1) < self.epsilon:
-            return random.randrange(self.action_size)
+    def pick_epsilon_greedy_action(self, state, info):
+            """Epsilon-greedy action selection with valid action masking"""
+            valid_actions = info["valid_actions"]
+            
+            # Select random valid action with probability ε
+            if random.uniform(0, 1) < self.epsilon:
+                valid_indices = np.where(valid_actions == 1)[0]
+                return np.random.choice(valid_indices)
 
-        # Pick action with highest Q-Value
-        with torch.no_grad():
-            state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-            q_values = self.main_network(state)
-            return q_values.argmax().item()
+            # Pick action with highest Q-Value among valid actions
+            with torch.no_grad():
+                state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+                q_values = self.main_network(state_tensor)[0].cpu().numpy()
+                masked_q_values = np.where(valid_actions == 1, q_values, -np.inf)
+                return np.argmax(masked_q_values)
 
     def train(self, batch_size):
         # Sample a batch of experiences
@@ -102,18 +110,71 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+    
+    def save_checkpoint(self, episode, checkpoint_dir="checkpoints"):
+        """Save the current state of training to resume later"""
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        checkpoint_path = os.path.join(checkpoint_dir, f"checkpoint_ep{episode}.pt")
         
-def train_dqn(num_episode):
+        # Save model state, optimizer state, epsilon, and episode number
+        checkpoint = {
+            'main_network': self.main_network.state_dict(),
+            'target_network': self.target_network.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'epsilon': self.epsilon,
+            'episode': episode
+        }
+        
+        torch.save(checkpoint, checkpoint_path)
+        
+        # Save replay buffer separately (could be large)
+        buffer_path = os.path.join(checkpoint_dir, f"replay_buffer_ep{episode}.pkl")
+        with open(buffer_path, 'wb') as f:
+            pickle.dump(self.replay_buffer, f)
+        
+        print(f"Checkpoint saved at episode {episode}")
+        return checkpoint_path
+    
+    def load_checkpoint(self, checkpoint_path, buffer_path=None):
+        """Load a saved checkpoint to resume training"""
+        if not os.path.exists(checkpoint_path):
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
+        
+        # Load model checkpoint
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        self.main_network.load_state_dict(checkpoint['main_network'])
+        self.target_network.load_state_dict(checkpoint['target_network'])
+        self.optimizer.load_state_dict(checkpoint['optimizer'])
+        self.epsilon = checkpoint['epsilon']
+        episode = checkpoint['episode']
+        
+        # Load replay buffer if provided
+        if buffer_path and os.path.exists(buffer_path):
+            with open(buffer_path, 'rb') as f:
+                self.replay_buffer = pickle.load(f)
+            print(f"Loaded replay buffer from {buffer_path}")
+        
+        print(f"Loaded checkpoint from episode {episode}")
+        return episode
+    
+    def save_model(self, episode, models_dir="models"):
+        """Save just the model (not for resuming training, but for inference)"""
+        os.makedirs(models_dir, exist_ok=True)
+        model_path = os.path.join(models_dir, f"trained_model_{episode}.pt")
+        torch.save(self.main_network.state_dict(), model_path)
+        print(f"Model saved at episode {episode}")
+        return model_path
+        
+def train_dqn(num_episodes=150, checkpoint_path=None, checkpoint_freq=50, model_save_freq=100):
     env = gym.make("gymnasium_env/CenturyGolem-v9")
     env = FlattenObservation(env)
-    state, _ = env.reset()
+    state, info = env.reset()
 
     # Define state and action size
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.n
 
-    # Define number of episodes, timesteps per episode and batch size
-    num_episodes = 150
+    # Define number of timesteps per episode and batch size
     num_timesteps = 500
     batch_size = 64
     time_step = 0
@@ -121,13 +182,22 @@ def train_dqn(num_episode):
     
     dqn_agent = DQNAgent(state_size, action_size) 
     opponent = RandomAgent(action_size)
+    
+    # Start episode counter
+    start_episode = 0
+    
+    # Load checkpoint if provided
+    if checkpoint_path:
+        buffer_path = checkpoint_path.replace("checkpoint", "replay_buffer")
+        start_episode = dqn_agent.load_checkpoint(checkpoint_path, buffer_path)
+        print(f"Resuming training from episode {start_episode}")
 
     try:
-        for ep in range(num_episodes):
+        for ep in range(start_episode, num_episodes):
             dqn_total_reward = 0
             opponent_total_reward = 0
             
-            state, _ = env.reset()
+            state, info = env.reset()
 
             print(f'\nTraining on EPISODE {ep+1} with epsilon {dqn_agent.epsilon}')
             start = time.time()
@@ -183,6 +253,14 @@ def train_dqn(num_episode):
             # Print episode info
             elapsed = time.time() - start
             print(f'Time elapsed during EPISODE {ep+1}: {elapsed} seconds = {round(elapsed/60, 3)} minutes')
+            
+            # Save checkpoint every checkpoint_freq episodes
+            if (ep + 1) % checkpoint_freq == 0:
+                dqn_agent.save_checkpoint(ep + 1)
+            
+            # Save model every model_save_freq episodes
+            if (ep + 1) % model_save_freq == 0:
+                dqn_agent.save_model(ep + 1)
     
     except KeyboardInterrupt:
         print("\nTraining interrupted manually.")
@@ -191,4 +269,11 @@ def train_dqn(num_episode):
         env.close()
 
 if __name__ == '__main__':
-    train_dqn(150)
+    parser = argparse.ArgumentParser(description='Train DQN agent for Century game')
+    parser.add_argument('--episodes', type=int, default=500, help='Number of episodes to train')
+    parser.add_argument('--checkpoint', type=str, help='Path to checkpoint file to resume training')
+    parser.add_argument('--checkpoint-freq', type=int, default=500, help='Frequency to save checkpoints')
+    parser.add_argument('--model-save-freq', type=int, default=500, help='Frequency to save model versions')
+    
+    args = parser.parse_args()
+    train_dqn(args.episodes, args.checkpoint, args.checkpoint_freq, args.model_save_freq)
