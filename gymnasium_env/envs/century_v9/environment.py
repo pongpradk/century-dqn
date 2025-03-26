@@ -349,12 +349,6 @@ class CenturyGolemEnv(gym.Env):
         terminated = False
         reward = GAME_CONSTANTS['REWARDS']['STEP']
         
-        # Store the last action for each player
-        if self.current_player == self.player1:
-            self.last_action_dqn = Actions(action).name  # Convert action enum to string
-        else:
-            self.last_action_random = Actions(action).name
-        
         # Action: Rest
         if action == Actions.rest.value:
             reward += self._handle_rest()
