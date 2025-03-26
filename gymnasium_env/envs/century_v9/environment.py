@@ -181,16 +181,11 @@ class CenturyGolemEnv(gym.Env):
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
         # Initialize players
-        self.player1 = Player(1)
-        self.player2 = Player(2)
-        self.current_player, self.next_player = random.sample([self.player1, self.player2], 2)
-        self.next_player.caravan["yellow"] += 1
+        self.player1, self.player2 = Player(1), Player(2)
+        self.current_player, self.next_player = None, None
         
         self.endgame_triggered = False  # Tracks if endgame was triggered
         self.endgame_initiator = None   # The player who triggered the endgame
-        
-        self.turn_counter = 0
-        self.round = 1
         
         # Render
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -272,22 +267,23 @@ class CenturyGolemEnv(gym.Env):
         
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
-        self.current_player = random.choice([self.player1, self.player2])  # Choose which player to play first
-        self.other_player = self.player1 if self.current_player == self.player2 else self.player2
+        self.current_player = random.choice([self.player1, self.player2])
+        self.next_player = self.player1 if self.current_player == self.player2 else self.player2
         
-        # Reset players
-        self.current_player.caravan["yellow"], self.other_player.caravan["yellow"] = 3, 4
         for player in (self.player1, self.player2):
             player.caravan["green"] = 0
             player.merchant_cards = [2, 2, 0, 0, 0, 0, 0, 0, 0, 0]
             player.golem_count = 0
             player.points = 0
             
+        self.current_player.caravan["yellow"] = 3
+        self.next_player.caravan["yellow"] = 4
+        
+        # Ensure first player has correct starting crystals
+        self.current_player.caravan["yellow"] = 3
+            
         self.endgame_triggered = False  # Tracks if endgame was triggered
         self.endgame_initiator = None   # The player who triggered the endgame
-        
-        self.turn_counter = 0
-        self.round = 1
         
         observation = self._get_obs(self.current_player)
         info = self._get_info()
@@ -392,13 +388,7 @@ class CenturyGolemEnv(gym.Env):
                 reward -= GAME_CONSTANTS['REWARDS']['WIN']
         
         # Switch turn
-        self.current_player, self.other_player = self.other_player, self.current_player
-
-        # Turn and Round
-        if not terminated:
-            self.turn_counter += 1  
-            if self.turn_counter % 2 == 0:
-                self.round += 1
+        self.current_player, self.next_player = self.next_player, self.current_player
         
         observation = self._get_obs(self.current_player)
         info = self._get_info()
