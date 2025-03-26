@@ -63,7 +63,28 @@ def custom_actions(action_sequence):
     
     print(f"Reward: {tot_reward}")
     env.close()
-
+    
+def manual_vs_random(turns=1000):
+    state, info = env.reset()
+    
+    for _ in range(turns):
+        
+        valid_mask = info["valid_actions"]
+        valid_indices = np.where(valid_mask == 1)[0]  # Get indices of valid actions
+        valid_actions = [f"{Actions(index).name}: {index}" for index in valid_indices]
+        print(valid_actions)
+        
+        if info['current_player'] == 0:
+            action = int(input("Enter action: "))
+            state, reward, terminal, _, info = env.step(action)
+        else:
+            action = np.random.choice(valid_indices)
+            state, reward, terminal, _, info = env.step(action)
+        
+        if terminal:
+            break
+    
+    
 def play_against_random(turns=5):
     state, info = env.reset()
     tot_reward = 0
@@ -117,4 +138,4 @@ def dqn_vs_random(turns=5):
     env.close()
     
 
-manual()
+manual_vs_random()

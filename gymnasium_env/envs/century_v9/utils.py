@@ -16,6 +16,6 @@ def remove_excess_crystals(player):
         player.caravan["yellow"] -= excess_yellow
         player.caravan["green"] -= excess_green
         
-        return (0.5 * excess_yellow) + (1 * excess_green)
+        return (GAME_CONSTANTS['CRYSTAL_VALUES']['yellow'] * excess_yellow) + (GAME_CONSTANTS['CRYSTAL_VALUES']['green'] * excess_green)
 
     return 0 
