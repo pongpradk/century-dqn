@@ -3,6 +3,7 @@ import random
 import time
 import os
 import pickle
+import glob
 import argparse
 from collections import deque
 
@@ -110,13 +111,21 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-    
+
     def save_checkpoint(self, episode, checkpoint_dir="checkpoints"):
-        """Save the current state of training to resume later"""
+        """Save the current state of training to resume later, replacing previous checkpoint files"""
         os.makedirs(checkpoint_dir, exist_ok=True)
+
+        # Step 1: Remove old checkpoint and buffer files
+        old_ckpts = glob.glob(os.path.join(checkpoint_dir, "checkpoint_ep*.pt"))
+        old_buffers = glob.glob(os.path.join(checkpoint_dir, "replay_buffer_ep*.pkl"))
+        for f in old_ckpts + old_buffers:
+            os.remove(f)
+
+        # Step 2: Save new checkpoint and buffer
         checkpoint_path = os.path.join(checkpoint_dir, f"checkpoint_ep{episode}.pt")
-        
-        # Save model state, optimizer state, epsilon, and episode number
+        buffer_path = os.path.join(checkpoint_dir, f"replay_buffer_ep{episode}.pkl")
+
         checkpoint = {
             'main_network': self.main_network.state_dict(),
             'target_network': self.target_network.state_dict(),
@@ -124,14 +133,11 @@ class DQNAgent:
             'epsilon': self.epsilon,
             'episode': episode
         }
-        
         torch.save(checkpoint, checkpoint_path)
-        
-        # Save replay buffer separately (could be large)
-        buffer_path = os.path.join(checkpoint_dir, f"replay_buffer_ep{episode}.pkl")
+
         with open(buffer_path, 'wb') as f:
             pickle.dump(self.replay_buffer, f)
-        
+
         print(f"Checkpoint saved at episode {episode}")
         return checkpoint_path
     
@@ -272,7 +278,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train DQN agent for Century game')
     parser.add_argument('--episodes', type=int, default=500, help='Number of episodes to train')
     parser.add_argument('--checkpoint', type=str, help='Path to checkpoint file to resume training')
-    parser.add_argument('--checkpoint-freq', type=int, default=500, help='Frequency to save checkpoints')
+    parser.add_argument('--checkpoint-freq', type=int, default=100, help='Frequency to save checkpoints')
     parser.add_argument('--model-save-freq', type=int, default=500, help='Frequency to save model versions')
     
     args = parser.parse_args()
