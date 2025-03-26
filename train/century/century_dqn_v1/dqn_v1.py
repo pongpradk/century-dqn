@@ -12,6 +12,7 @@ from torch.nn import functional as F
 
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
+from .random_agent import RandomAgent
 
 class DQN(nn.Module):
     def __init__(self, state_size, action_size):
@@ -101,20 +102,8 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-
-def temp():
-    env = gym.make("gymnasium_env/CenturyGolem-v9")
-    env = FlattenObservation(env)
-    state, info = env.reset()
-    
-    if info['current_player'] == 0:
-        if not terminal and info['current_player'] == 1:
-            pass
-    elif info['current_player'] == 1:
-        pass
         
-
-if __name__ == '__main__':
+def train_dqn(num_episode):
     env = gym.make("gymnasium_env/CenturyGolem-v9")
     env = FlattenObservation(env)
     state, _ = env.reset()
@@ -127,60 +116,79 @@ if __name__ == '__main__':
     num_episodes = 150
     num_timesteps = 500
     batch_size = 64
-    dqn_agent = DQNAgent(state_size, action_size)
     time_step = 0
     rewards, epsilon_values = list(), list()
+    
+    dqn_agent = DQNAgent(state_size, action_size) 
+    opponent = RandomAgent(action_size)
 
-    for ep in range(num_episodes):
-        tot_reward = 0
-        state, _ = env.reset()
+    try:
+        for ep in range(num_episodes):
+            dqn_total_reward = 0
+            opponent_total_reward = 0
+            
+            state, _ = env.reset()
 
-        print(f'\nTraining on EPISODE {ep+1} with epsilon {dqn_agent.epsilon}')
-        start = time.time()
+            print(f'\nTraining on EPISODE {ep+1} with epsilon {dqn_agent.epsilon}')
+            start = time.time()
 
-        for t in range(num_timesteps):
-            time_step += 1
+            for t in range(num_timesteps):
+                time_step += 1
 
-            # Update Target Network every update_rate timesteps
-            if time_step % dqn_agent.update_rate == 0:
-                dqn_agent.update_target_network()
+                # Update Target Network every update_rate timesteps
+                if time_step % dqn_agent.update_rate == 0:
+                    dqn_agent.update_target_network()
 
-            action = dqn_agent.pick_epsilon_greedy_action(state)
-            next_state, reward, terminal, _, _ = env.step(action)
-            dqn_agent.save_experience(state, action, reward, next_state, terminal)
+                if info['current_player'] == 0:
+                    action = dqn_agent.pick_epsilon_greedy_action(state, info)
+                    next_state, reward, terminal, _, info = env.step(action)
+                    
+                    dqn_total_reward += reward
+                    
+                    if not terminal and info['current_player'] == 1:
+                        opponent_action = opponent.pick_action(next_state, info)
+                        next_state_after_opponent, opponent_reward, terminal, _, info = env.step(opponent_action)
+                        
+                        opponent_total_reward += opponent_reward
+                        
+                        dqn_agent.save_experience(state, action, reward, next_state_after_opponent, terminal)
+                        
+                        state = next_state_after_opponent
+                    else:
+                        dqn_agent.save_experience(state, action, reward, next_state, terminal)
+                        state = next_state
+                
+                elif info['current_player'] == 1:
+                    opponent_action = opponent.pick_action(state, info)
+                    next_state, opponent_reward, terminal, _, info = env.step(opponent_action)
+                    
+                    opponent_total_reward += opponent_reward
+                    state = next_state
 
-            state = next_state
-            tot_reward += reward
+                if terminal:
+                    print('Episode: ', ep+1, ',' ' terminated with Reward ', dqn_total_reward)
+                    break
 
-            if terminal:
-                print('Episode: ', ep+1, ',' ' terminated with Reward ', tot_reward)
-                break
+                # Train the Main NN when ReplayBuffer has enough experiences
+                if len(dqn_agent.replay_buffer) > batch_size:
+                    dqn_agent.train(batch_size)
 
-            # Train the Main NN when ReplayBuffer has enough experiences
-            if len(dqn_agent.replay_buffer) > batch_size:
-                dqn_agent.train(batch_size)
+            rewards.append(dqn_total_reward)
+            epsilon_values.append(dqn_agent.epsilon)
 
-        rewards.append(tot_reward)
-        epsilon_values.append(dqn_agent.epsilon)
+            # Update Epsilon value
+            if dqn_agent.epsilon > dqn_agent.epsilon_min:
+                dqn_agent.epsilon *= dqn_agent.epsilon_decay
 
-        # Update Epsilon value
-        if dqn_agent.epsilon > dqn_agent.epsilon_min:
-            dqn_agent.epsilon *= dqn_agent.epsilon_decay
+            # Print episode info
+            elapsed = time.time() - start
+            print(f'Time elapsed during EPISODE {ep+1}: {elapsed} seconds = {round(elapsed/60, 3)} minutes')
+    
+    except KeyboardInterrupt:
+        print("\nTraining interrupted manually.")
+    
+    finally:
+        env.close()
 
-        # Print episode info
-        elapsed = time.time() - start
-        print(f'Time elapsed during EPISODE {ep+1}: {elapsed} seconds = {round(elapsed/60, 3)} minutes')
-
-    # Save rewards
-    with open('rewards_v2.txt', 'w') as f:
-        f.write(json.dumps(rewards))
-    print("Rewards of the training saved in 'rewards_v2.txt'")
-
-    # Save epsilon values
-    with open('epsilon_values_v2.txt', 'w') as f:
-        f.write(json.dumps(epsilon_values))
-    print("Epsilon values of the training saved in 'epsilon_values_v2.txt'")
-
-    # Save trained model
-    torch.save(dqn_agent.main_network.state_dict(), 'trained_agent_v2.pth')
-    print("Trained agent saved in 'trained_agent_v2.pth'")
+if __name__ == '__main__':
+    train_dqn(150)
