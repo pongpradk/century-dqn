@@ -63,11 +63,11 @@ class DQNAgent:
         exp_batch = random.sample(self.replay_buffer, batch_size)
 
         # Create tensors for each component
-        state_batch = torch.FloatTensor([batch[0] for batch in exp_batch]).to(self.device)
-        action_batch = torch.LongTensor([batch[1] for batch in exp_batch]).to(self.device)
-        reward_batch = torch.FloatTensor([batch[2] for batch in exp_batch]).to(self.device)
-        next_state_batch = torch.FloatTensor([batch[3] for batch in exp_batch]).to(self.device)
-        terminal_batch = torch.FloatTensor([batch[4] for batch in exp_batch]).to(self.device)
+        state_batch = torch.FloatTensor(np.array([batch[0] for batch in exp_batch])).to(self.device)
+        action_batch = torch.LongTensor(np.array([batch[1] for batch in exp_batch])).to(self.device)
+        reward_batch = torch.FloatTensor(np.array([batch[2] for batch in exp_batch])).to(self.device)
+        next_state_batch = torch.FloatTensor(np.array([batch[3] for batch in exp_batch])).to(self.device)
+        terminal_batch = torch.FloatTensor(np.array([batch[4] for batch in exp_batch])).to(self.device)
 
         return state_batch, action_batch, reward_batch, next_state_batch, terminal_batch
 
