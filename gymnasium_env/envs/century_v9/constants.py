@@ -3,14 +3,14 @@ GAME_CONSTANTS = {
     'GOLEM_ENDGAME_THRESHOLD': 3,
     'CRYSTAL_VALUES': {
         'yellow': 0.5,
-        'green': 1.0
+        'green': 2.0
     },
     'REWARDS': {
         'WIN': 100,
         'TIE': 50,
-        'STEP': -0.01,
-        'REST': -0.1,
-        'GET_MERCHANT_CARD': 1,
-        'USE_MERCHANT_CARD': 1
+        'STEP': -0.1,
+        'REST': -1.0,
+        'GET_MERCHANT_CARD': 2.0,
+        'USE_MERCHANT_CARD': 0.5
     }
 } 

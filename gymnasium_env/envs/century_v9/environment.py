@@ -60,14 +60,19 @@ class CenturyGolemEnv(gym.Env):
         return GAME_CONSTANTS['REWARDS']['REST']
     
     def _handle_get_merchant_card(self, action):
-        card_id = action + 2 # e.g. M3 = action 1 + 2
+        card_id = action + 2  # e.g. M3 = action 1 + 2
         
         if self.merchant_deck[card_id] in self.merchant_market:
             self.current_player.merchant_cards[card_id - 1] = CardStatus.PLAYABLE.value
             self.merchant_deck[card_id].owned = True
             self.merchant_market.remove(self.merchant_deck[card_id])
             self._draw_merchant_card()
-            return GAME_CONSTANTS['REWARDS']['GET_MERCHANT_CARD']
+            
+            # Progressive discount based on number of cards already owned
+            owned_count = sum(1 for status in self.current_player.merchant_cards if status > 0)
+            card_value = max(0.5, GAME_CONSTANTS['REWARDS']['GET_MERCHANT_CARD'] * (1 - 0.15 * (owned_count - 2)))
+            
+            return card_value
 
         raise InvalidActionError(f"Card M{card_id} is not in market")
 
@@ -142,7 +147,10 @@ class CenturyGolemEnv(gym.Env):
             self.golem_market.remove(golem_card)
             self._draw_golem_card()
             
-            return golem_card.points
+            # Add bonus for higher-point golems
+            strategic_bonus = (golem_card.points - 5) * 0.5  # Bonus scales with points above baseline
+            
+            return golem_card.points + max(0, strategic_bonus)
     
     def __init__(self, render_mode=None, record_session=False):
         self.action_space = spaces.Discrete(24)

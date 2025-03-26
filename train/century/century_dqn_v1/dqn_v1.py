@@ -20,15 +20,15 @@ import sys; sys.path.append('..'); from random_agent import RandomAgent
 
 class DQNConfig:
     def __init__(self, **kwargs):
-        self.gamma = kwargs.get('gamma', 0.99)
+        self.gamma = kwargs.get('gamma', 0.98)
         self.epsilon = kwargs.get('epsilon', 1.0)
-        self.epsilon_min = kwargs.get('epsilon_min', 0.01)
-        self.epsilon_decay = kwargs.get('epsilon_decay', 0.995)
-        self.learning_rate = kwargs.get('learning_rate', 0.001)
-        self.update_rate = kwargs.get('update_rate', 4)
-        self.batch_size = kwargs.get('batch_size', 32)
-        self.replay_buffer_size = kwargs.get('replay_buffer_size', 2000)
-        self.num_timesteps = kwargs.get('num_timesteps', 1000)
+        self.epsilon_min = kwargs.get('epsilon_min', 0.05)
+        self.epsilon_decay = kwargs.get('epsilon_decay', 0.997)
+        self.learning_rate = kwargs.get('learning_rate', 0.0005)
+        self.update_rate = kwargs.get('update_rate', 100)
+        self.batch_size = kwargs.get('batch_size', 64)
+        self.replay_buffer_size = kwargs.get('replay_buffer_size', 10000)
+        self.num_timesteps = kwargs.get('num_timesteps', 2000)
         self.checkpoint_freq = kwargs.get('checkpoint_freq', 10)
         self.model_save_freq = kwargs.get('model_save_freq', 50)
 
@@ -36,14 +36,16 @@ class DQNConfig:
 class DQN(nn.Module):
     def __init__(self, state_size, action_size):
         super(DQN, self).__init__()
-        self.fc1 = nn.Linear(state_size, 32)
-        self.fc2 = nn.Linear(32, 32)
-        self.fc3 = nn.Linear(32, action_size)
+        self.fc1 = nn.Linear(state_size, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, action_size)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        return self.fc3(x)
+        x = F.relu(self.fc3(x))
+        return self.fc4(x)
 
 
 class DQNAgent:
@@ -293,20 +295,37 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
 if __name__ == '__main__':
     # Allow for command line arguments
     parser = argparse.ArgumentParser(description='Train DQN agent for Century game')
-    parser.add_argument('--episodes', type=int, required=True, help='Number of episodes to train')
-    parser.add_argument('--checkpoint', type=str, required=True, help='Path to checkpoint file to resume training')
-    parser.add_argument('--checkpoint-freq', type=int, required=True, help='Frequency to save checkpoints')
-    parser.add_argument('--model-save-freq', type=int, required=True, help='Frequency to save model versions')
-    parser.add_argument('--gamma', type=float, required=True, help='Discount factor for future rewards')
-    parser.add_argument('--epsilon', type=float, required=True, help='Initial epsilon for exploration')
-    parser.add_argument('--epsilon-decay', type=float, required=True, help='Decay rate for epsilon')
-    parser.add_argument('--epsilon-min', type=float, required=True, help='Minimum epsilon value')
-    parser.add_argument('--learning-rate', type=float, required=True, help='Learning rate for optimizer')
-    parser.add_argument('--update-rate', type=int, required=True, help='Update rate for target network')
-    parser.add_argument('--batch-size', type=int, required=True, help='Batch size for training')
-    parser.add_argument('--replay-buffer-size', type=int, required=True, help='Size of the replay buffer')
-    parser.add_argument('--num-timesteps', type=int, required=True, help='Number of timesteps per episode')
+    parser.add_argument('--episodes', type=int, default=None, help='Number of episodes to train')
+    parser.add_argument('--checkpoint', type=str, default=None, help='Path to checkpoint file to resume training')
+    parser.add_argument('--checkpoint-freq', type=int, default=None, help='Frequency to save checkpoints')
+    parser.add_argument('--model-save-freq', type=int, default=None, help='Frequency to save model versions')
+    parser.add_argument('--gamma', type=float, default=None, help='Discount factor for future rewards')
+    parser.add_argument('--epsilon', type=float, default=None, help='Initial epsilon for exploration')
+    parser.add_argument('--epsilon-decay', type=float, default=None, help='Decay rate for epsilon')
+    parser.add_argument('--epsilon-min', type=float, default=None, help='Minimum epsilon value')
+    parser.add_argument('--learning-rate', type=float, default=None, help='Learning rate for optimizer')
+    parser.add_argument('--update-rate', type=int, default=None, help='Update rate for target network')
+    parser.add_argument('--batch-size', type=int, default=None, help='Batch size for training')
+    parser.add_argument('--replay-buffer-size', type=int, default=None, help='Size of the replay buffer')
+    parser.add_argument('--num-timesteps', type=int, default=None, help='Number of timesteps per episode')
     
     args = parser.parse_args()
-    config = DQNConfig(**vars(args))
-    train_dqn(config, args.episodes, args.checkpoint)
+    
+    config_dict = {
+        'episodes': args.episodes if args.episodes is not None else 3000,
+        'checkpoint': args.checkpoint if args.checkpoint is not None else None,
+        'checkpoint_freq': args.checkpoint_freq if args.checkpoint_freq is not None else 250,
+        'model_save_freq': args.model_save_freq if args.model_save_freq is not None else 500,
+        'gamma': args.gamma if args.gamma is not None else 0.98,
+        'epsilon': args.epsilon if args.epsilon is not None else 1.0,
+        'epsilon_decay': args.epsilon_decay if args.epsilon_decay is not None else 0.997,
+        'epsilon_min': args.epsilon_min if args.epsilon_min is not None else 0.05,
+        'learning_rate': args.learning_rate if args.learning_rate is not None else 0.0005,
+        'update_rate': args.update_rate if args.update_rate is not None else 100,
+        'batch_size': args.batch_size if args.batch_size is not None else 64,
+        'replay_buffer_size': args.replay_buffer_size if args.replay_buffer_size is not None else 10000,
+        'num_timesteps': args.num_timesteps if args.num_timesteps is not None else 2000,
+    }
+
+    config = DQNConfig(**config_dict)
+    train_dqn(config, config_dict['episodes'], config_dict['checkpoint'])
