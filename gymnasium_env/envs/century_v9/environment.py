@@ -199,7 +199,7 @@ class CenturyGolemEnv(gym.Env):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
         
-        self.winner = None  # Stores winner's name ("DQN" or "Random")
+        self.winner = None
         self.player1_final_points = 0  # Stores final DQN points
         self.player2_final_points = 0  # Stores final Random points
     
@@ -258,6 +258,7 @@ class CenturyGolemEnv(gym.Env):
         return {
             "valid_actions": self._get_valid_actions(self.current_player),
             "current_player": int(self.current_player.player_id - 1),  # 0 for player1, 1 for player2
+            "winner": self.winner if self.winner is not None else None
         }
     
     def reset(self, seed=None, options=None):
@@ -387,13 +388,13 @@ class CenturyGolemEnv(gym.Env):
             
             score_diff = self.player1_final_points - self.player2_final_points
             if score_diff > 0:
-                self.winner = self.player1
+                self.winner = "P1"
                 reward += GAME_CONSTANTS['REWARDS']['WIN']
             elif score_diff == 0:
-                self.winner = None
+                self.winner = "P0"
                 reward += GAME_CONSTANTS['REWARDS']['TIE']
             else:
-                self.winner = self.player2
+                self.winner = "P2"
                 reward -= GAME_CONSTANTS['REWARDS']['WIN']
         
         # Switch turn
@@ -438,4 +439,5 @@ class CenturyGolemEnv(gym.Env):
             print("")
             
     def close(self):
-        print("=== CLOSE ENVIRONMENT ===") 
+        if self.render_mode == "text":
+            print("=== CLOSE ENVIRONMENT ===") 

@@ -66,6 +66,7 @@ def custom_actions(action_sequence):
     
 def manual_vs_random(turns=1000):
     state, info = env.reset()
+    total_reward = 0
     
     for _ in range(turns):
         
@@ -77,12 +78,15 @@ def manual_vs_random(turns=1000):
         if info['current_player'] == 0:
             action = int(input("Enter action: "))
             state, reward, terminal, _, info = env.step(action)
+            total_reward += reward
         else:
             action = np.random.choice(valid_indices)
             state, reward, terminal, _, info = env.step(action)
         
         if terminal:
             break
+    
+    print(f"Total Reward: {total_reward}")
     
     
 def play_against_random(turns=5):

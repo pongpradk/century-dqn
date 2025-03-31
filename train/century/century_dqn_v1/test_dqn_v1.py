@@ -51,10 +51,10 @@ if __name__ == '__main__':
     state, info = env.reset()
     
     # Load the trained model
-    trained_agent = load_pretrained_model('models/trained_model_500.pt')  # Adjust path as needed
+    trained_agent = load_pretrained_model('models/trained_model_1500.pt')  # Adjust path as needed
     
     total_reward = 0
-    max_timesteps = 500
+    max_timesteps = 2000
     opponent = RandomAgent(env.action_space.n)  # Create random opponent
 
     # Execute Episode
