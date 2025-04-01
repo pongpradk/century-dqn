@@ -158,7 +158,7 @@ class CenturyGolemEnv(gym.Env):
             # Simplified reward: base + points
             return GAME_CONSTANTS['REWARDS']['GOLEM_BASE_REWARD'] + golem_card.points
     
-    def __init__(self, render_mode=None, record_session=False):
+    def __init__(self, render_mode=None):
         self.action_space = spaces.Discrete(24)
         
         # Open information

@@ -7,6 +7,7 @@ from century_dqn4.dqn4 import DQN
 from gymnasium.wrappers import FlattenObservation
 from random_agent import RandomAgent
 
+NUM_GAMES = 1000
 
 def load_pretrained_model(path, state_size, action_size):
     
@@ -80,10 +81,9 @@ if __name__ == '__main__':
     action_size = env.action_space.n
     
     # Load the trained model
-    trained_agent = load_pretrained_model('century_dqn4/models/trained_model_750.pt', state_size, action_size)
+    trained_agent = load_pretrained_model('century_dqn4/models/trained_model_700.pt', state_size, action_size)
     
-    # Run 100 games
-    for game_num in range(100):
+    for game_num in range(NUM_GAMES):
         if game_num > 0:
             # For games 2-100, create new environment without render mode
             env.close()
@@ -145,18 +145,18 @@ if __name__ == '__main__':
     
     # Print final statistics
     print("\nEvaluation Results:")
-    print(f"Total Games: 100")
+    print(f"Total Games: {NUM_GAMES}")
     print(f"DQN Agent Wins: {dqn_wins}")
     print(f"Random Agent Wins: {random_wins}")
     print(f"Ties: {ties}")
-    print(f"Win Rate: {(dqn_wins / 100) * 100:.2f}%")
+    print(f"Win Rate: {(dqn_wins / NUM_GAMES) * 100:.2f}%")
     
     print("\nAction Distribution (DQN Agent):")
     for action in action_count:
         action_count[action] = (action_count[action] / total_action) * 100
         print(f"{Actions(int(action)).name}: {action_count[action]:.2f}%")
         
-    final_yellow_crystals = final_yellow_crystals / 100
-    final_green_crystals = final_green_crystals / 100
+    final_yellow_crystals = final_yellow_crystals / NUM_GAMES
+    final_green_crystals = final_green_crystals / NUM_GAMES
     print(f"\nAverage Final Yellow Crystals: {final_yellow_crystals}")
     print(f"Average Final Green Crystals: {final_green_crystals}")

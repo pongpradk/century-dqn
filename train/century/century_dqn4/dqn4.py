@@ -36,17 +36,14 @@ class DQNConfig:
 class DQN(nn.Module):
     def __init__(self, state_size, action_size):
         super(DQN, self).__init__()
-        self.fc1 = nn.Linear(state_size, 256)  # larger network
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 128)
-        self.fc4 = nn.Linear(128, action_size)
-        self.dropout = nn.Dropout(0.2)  # add dropout
+        self.fc1 = nn.Linear(state_size, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, action_size)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
-        x = self.dropout(x)
         x = F.relu(self.fc2(x))
-        x = self.dropout(x)
         x = F.relu(self.fc3(x))
         return self.fc4(x)
 
@@ -327,14 +324,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     config_dict = {
-        'episodes': args.episodes if args.episodes is not None else 3000,
+        'episodes': args.episodes if args.episodes is not None else 700,
         'checkpoint': args.checkpoint if args.checkpoint is not None else None,
-        'checkpoint_freq': args.checkpoint_freq if args.checkpoint_freq is not None else 250,
-        'model_save_freq': args.model_save_freq if args.model_save_freq is not None else 250,
+        'checkpoint_freq': args.checkpoint_freq if args.checkpoint_freq is not None else 200,
+        'model_save_freq': args.model_save_freq if args.model_save_freq is not None else 100,
         'gamma': args.gamma if args.gamma is not None else 0.99,
         'epsilon': args.epsilon if args.epsilon is not None else 1.0,
         'epsilon_decay': args.epsilon_decay if args.epsilon_decay is not None else 0.9995,
-        'epsilon_min': args.epsilon_min if args.epsilon_min is not None else 0.25,
+        'epsilon_min': args.epsilon_min if args.epsilon_min is not None else 0.2,
         'learning_rate': args.learning_rate if args.learning_rate is not None else 0.0001,
         'update_rate': args.update_rate if args.update_rate is not None else 500,
         'batch_size': args.batch_size if args.batch_size is not None else 64,
