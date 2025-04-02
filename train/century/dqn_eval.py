@@ -3,7 +3,7 @@ import gymnasium_env
 from gymnasium_env.envs.century_v9.enums import Actions
 import torch
 import numpy as np
-from century_dqn4.dqn4 import DQN
+from century_dqn5.dqn5 import DQN
 from gymnasium.wrappers import FlattenObservation
 from random_agent import RandomAgent
 
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     final_green_crystals = 0
     
     # Create environment for first game with render mode
-    env = gym.make('gymnasium_env/CenturyGolem-v10', render_mode='text')
+    env = gym.make('gymnasium_env/CenturyGolem-v11', render_mode='text')
     env = FlattenObservation(env)
     state, info = env.reset()
     
@@ -81,13 +81,13 @@ if __name__ == '__main__':
     action_size = env.action_space.n
     
     # Load the trained model
-    trained_agent = load_pretrained_model('century_dqn4/models/trained_model_700.pt', state_size, action_size)
+    trained_agent = load_pretrained_model('century_dqn5/models/trained_model_200.pt', state_size, action_size)
     
     for game_num in range(NUM_GAMES):
         if game_num > 0:
             # For games 2-100, create new environment without render mode
             env.close()
-            env = gym.make('gymnasium_env/CenturyGolem-v10', render_mode=None)
+            env = gym.make('gymnasium_env/CenturyGolem-v11', render_mode=None)
             env = FlattenObservation(env)
             state, info = env.reset()
         
