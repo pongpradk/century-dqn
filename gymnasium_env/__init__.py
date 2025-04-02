@@ -44,3 +44,8 @@ register(
     id="gymnasium_env/CenturyGolem-v10",
     entry_point="gymnasium_env.envs.century_v10:CenturyGolemEnv",
 )
+
+register(
+    id="gymnasium_env/CenturyGolem-v11",
+    entry_point="gymnasium_env.envs.century_v11:CenturyGolemEnv",
+)
