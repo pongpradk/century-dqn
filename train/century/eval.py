@@ -16,15 +16,20 @@ class GameStats:
     losses: int = 0
     draws: int = 0
     action_counts: np.ndarray = None
+    action_sequences: List[List[str]] = None
     track_actions: bool = False
+    track_wins: bool = False
+    track_sequences: bool = False
     
     def __post_init__(self):
         if self.track_actions:
             self.action_counts = np.zeros(len(Actions), dtype=int)
+        if self.track_sequences:
+            self.action_sequences = []
     
     @property
     def total_games(self) -> int:
-        return self.wins + self.losses + self.draws
+        return self.wins + self.losses + self.draws if self.track_wins else 0
     
     @property
     def win_rate(self) -> float:
@@ -32,30 +37,45 @@ class GameStats:
     
     def update(self, result: str) -> None:
         """Update statistics based on game result."""
-        if result == "win":
-            self.wins += 1
-        elif result == "loss":
-            self.losses += 1
-        else:  # draw
-            self.draws += 1
+        if self.track_wins:
+            if result == "win":
+                self.wins += 1
+            elif result == "loss":
+                self.losses += 1
+            else:  # draw
+                self.draws += 1
     
     def update_action_count(self, action: int) -> None:
         """Update action count if tracking is enabled."""
         if self.track_actions:
             self.action_counts[action] += 1
     
+    def start_new_sequence(self) -> None:
+        """Start a new action sequence if tracking is enabled."""
+        if self.track_sequences:
+            self.action_sequences.append([])
+    
+    def add_to_sequence(self, action: int) -> None:
+        """Add an action to the current sequence if tracking is enabled."""
+        if self.track_sequences and self.action_sequences:
+            self.action_sequences[-1].append(Actions(action).name)
+    
     def display(self, num_episodes: int) -> None:
         """Display current statistics."""
-        print("\n=== Game Statistics ===")
-        print(f"Total Games: {self.total_games}")
-        print(f"Wins: {self.wins}")
-        print(f"Losses: {self.losses}")
-        print(f"Draws: {self.draws}")
-        print(f"Win Rate: {self.win_rate:.2%}")
-        print("=====================\n")
+        if self.track_wins:
+            print("\n=== Game Statistics ===")
+            print(f"Total Games: {self.total_games}")
+            print(f"Wins: {self.wins}")
+            print(f"Losses: {self.losses}")
+            print(f"Draws: {self.draws}")
+            print(f"Win Rate: {self.win_rate:.2%}")
+            print("=====================\n")
         
         if self.track_actions:
             self.display_action_stats(num_episodes)
+            
+        if self.track_sequences:
+            self.display_action_sequences()
     
     def display_action_stats(self, num_episodes: int) -> None:
         """Display action distribution statistics."""
@@ -79,6 +99,19 @@ class GameStats:
             print(f"{action_name}: {avg_count:.2f} per game ({percentage:.1f}%)")
         
         print("==========================\n")
+    
+    def display_action_sequences(self) -> None:
+        """Display action sequences for all games."""
+        if not self.track_sequences or not self.action_sequences:
+            return
+            
+        print("\n=== Action Sequences ===")
+        for game_idx, sequence in enumerate(self.action_sequences, 1):
+            print(f"\nGame {game_idx}:")
+            # Print actions in groups of 5 for better readability
+            for i in range(0, len(sequence), 5):
+                print("  " + ", ".join(sequence[i:i+5]))
+        print("\n=======================\n")
 
 
 def load_pretrained_model(model_path: str) -> DQN:
@@ -156,6 +189,7 @@ def play_turn(
         action = select_trained_agent_action(state, agent, info)
         if stats is not None:
             stats.update_action_count(action)
+            stats.add_to_sequence(action)
     else:
         action = agent.pick_action(state, info)
         
@@ -206,6 +240,9 @@ def run_episode(
     state, info = env.reset()
     total_reward = 0
     
+    if stats is not None:
+        stats.start_new_sequence()
+    
     for _ in range(max_timesteps):
         # Trained agent's turn
         if info['current_player'] == 0:
@@ -242,7 +279,9 @@ def run_multiple_episodes(
     trained_agent: DQN,
     opponent: RandomAgent,
     num_episodes: int = 1000,
-    track_actions: bool = False
+    track_actions: bool = False,
+    track_wins: bool = False,
+    track_sequences: bool = False
 ) -> GameStats:
     """
     Run multiple episodes and track statistics.
@@ -253,11 +292,17 @@ def run_multiple_episodes(
         opponent: The random opponent agent
         num_episodes: Number of episodes to run
         track_actions: Whether to track action distribution
+        track_wins: Whether to track win/loss statistics
+        track_sequences: Whether to track action sequences
         
     Returns:
         GameStats object containing the statistics
     """
-    stats = GameStats(track_actions=track_actions)
+    stats = GameStats(
+        track_actions=track_actions,
+        track_wins=track_wins,
+        track_sequences=track_sequences
+    )
     
     for episode in range(num_episodes):
         total_reward, result = run_episode(env, trained_agent, opponent, stats=stats)
@@ -266,28 +311,33 @@ def run_multiple_episodes(
     return stats
 
 
-def main(num_episodes: int = 1000, track_actions: bool = False):
+def main(num_episodes: int = 1000, track_actions: bool = False, track_wins: bool = False, track_sequences: bool = False):
     """
     Main function to run the evaluation.
     
     Args:
         num_episodes: Number of episodes to run
         track_actions: Whether to track action distribution
+        track_wins: Whether to track win/loss statistics
+        track_sequences: Whether to track action sequences
     """
     # Create environment
     env = gym.make('gymnasium_env/CenturyGolem-v11', render_mode=None)
     env = FlattenObservation(env)
     
     # Load the trained model and create opponent
-    trained_agent = load_pretrained_model('century_dqn5/models/trained_model_500.pt')
+    trained_agent = load_pretrained_model('century_dqn5/models/trained_model_200.pt')
     opponent = RandomAgent(env.action_space.n)
     
     # Run multiple episodes and get statistics
-    stats = run_multiple_episodes(env, trained_agent, opponent, num_episodes, track_actions)
+    stats = run_multiple_episodes(
+        env, trained_agent, opponent, num_episodes,
+        track_actions, track_wins, track_sequences
+    )
     
     # Display final statistics
     stats.display(num_episodes)
 
 
 if __name__ == '__main__':
-    main(10, track_actions=False)  # Run 1000 episodes with action tracking enabled
+    main(10, track_wins=True, track_actions=True, track_sequences=True)
