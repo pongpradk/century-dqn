@@ -5,7 +5,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import json
-from century_dqn5.dqn5 import DQN
+from century_dqn6.dqn6 import DQN
 from gymnasium.wrappers import FlattenObservation
 from random_agent import RandomAgent
 
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     state, info = env.reset()
     
     # Load the trained model
-    trained_agent = load_pretrained_model('century_dqn5/models/trained_model_1500.pt')  # Adjust path as needed
+    trained_agent = load_pretrained_model('century_dqn6/models/trained_model_3000.pt')  # Adjust path as needed
     
     total_reward = 0
     max_timesteps = 2000
