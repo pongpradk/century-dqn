@@ -73,7 +73,7 @@ if __name__ == '__main__':
     final_green_crystals = 0
     
     # Create environment for first game with render mode
-    env = gym.make('gymnasium_env/CenturyGolem-v11', render_mode='text')
+    env = gym.make('gymnasium_env/CenturyGolem-v11', render_mode=None)
     env = FlattenObservation(env)
     state, info = env.reset()
     
@@ -81,15 +81,9 @@ if __name__ == '__main__':
     action_size = env.action_space.n
     
     # Load the trained model
-    trained_agent = load_pretrained_model('century_dqn5/models/trained_model_200.pt', state_size, action_size)
+    trained_agent = load_pretrained_model('century_dqn5/models/trained_model_400.pt', state_size, action_size)
     
     for game_num in range(NUM_GAMES):
-        if game_num > 0:
-            # For games 2-100, create new environment without render mode
-            env.close()
-            env = gym.make('gymnasium_env/CenturyGolem-v11', render_mode=None)
-            env = FlattenObservation(env)
-            state, info = env.reset()
         
         opponent = RandomAgent(env.action_space.n)
         max_timesteps = 2000
@@ -98,8 +92,6 @@ if __name__ == '__main__':
         for t in range(max_timesteps):
             if info['current_player'] == 0:
                 # DQN agent's turn
-                if game_num == 0:
-                    display_valid_actions(info)
                 action = select_trained_agent_action(state, trained_agent, info)
                 total_action += 1
                 action_count[action] += 1
@@ -107,8 +99,6 @@ if __name__ == '__main__':
                 
                 if not terminal and info['current_player'] == 1:
                     # Opponent's turn
-                    if game_num == 0:
-                        display_valid_actions(info)
                     opponent_action = opponent.pick_action(next_state, info)
                     next_state, opponent_reward, terminal, _, info = env.step(opponent_action)
                     state = next_state
@@ -117,8 +107,6 @@ if __name__ == '__main__':
             
             elif info['current_player'] == 1:
                 # Opponent's turn
-                if game_num == 0:
-                    display_valid_actions(info)
                 opponent_action = opponent.pick_action(state, info)
                 next_state, opponent_reward, terminal, _, info = env.step(opponent_action)
                 state = next_state
@@ -135,9 +123,6 @@ if __name__ == '__main__':
                 final_yellow_crystals += info['final_yellow_crystals']
                 final_green_crystals += info['final_green_crystals']
                 
-                if game_num == 0:
-                    print(f'Game {game_num + 1} terminated')
-                    print(f'Winner: {info["winner"]}')
                 break
     
     # Close the final environment
