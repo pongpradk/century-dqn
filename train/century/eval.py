@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from typing import Tuple, Dict, Any, List
 from dataclasses import dataclass
-from century_dqn6.dqn6 import DQN
+from century_dqn5.dqn5 import DQN
 from gymnasium.wrappers import FlattenObservation
 from random_agent import RandomAgent
 from gymnasium_env.envs.century_v11.enums import Actions
@@ -326,7 +326,7 @@ def main(num_episodes: int = 1000, track_actions: bool = False, track_wins: bool
     env = FlattenObservation(env)
     
     # Load the trained model and create opponent
-    trained_agent = load_pretrained_model('century_dqn6/models/trained_model_1700.pt')
+    trained_agent = load_pretrained_model('century_dqn5/models/trained_model_3000.pt')
     opponent = RandomAgent(env.action_space.n)
     
     # Run multiple episodes and get statistics
@@ -340,4 +340,4 @@ def main(num_episodes: int = 1000, track_actions: bool = False, track_wins: bool
 
 
 if __name__ == '__main__':
-    main(100, track_wins=True, track_actions=True, track_sequences=False)
+    main(1000, track_wins=True, track_actions=True, track_sequences=False)
