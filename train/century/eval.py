@@ -3,10 +3,10 @@ import torch
 import numpy as np
 from typing import Tuple, Dict, Any, List
 from dataclasses import dataclass
-from century_dqn5.dqn5 import DQN
+from dqn_v6.dqn_v6 import DQN
 from gymnasium.wrappers import FlattenObservation
 from random_agent import RandomAgent
-from gymnasium_env.envs.century_v11.enums import Actions
+from gymnasium_env.envs.century_v12.enums import Actions
 
 
 @dataclass
@@ -125,7 +125,7 @@ def load_pretrained_model(model_path: str) -> DQN:
         Loaded DQN model in evaluation mode
     """
     # Initialize environment to get state and action dimensions
-    env = gym.make('gymnasium_env/CenturyGolem-v11')
+    env = gym.make('gymnasium_env/CenturyGolem-v12')
     env = FlattenObservation(env)
     state, _ = env.reset()
     state_size = len(state)
@@ -322,11 +322,11 @@ def main(num_episodes: int = 1000, track_actions: bool = False, track_wins: bool
         track_sequences: Whether to track action sequences
     """
     # Create environment
-    env = gym.make('gymnasium_env/CenturyGolem-v11', render_mode=None)
+    env = gym.make('gymnasium_env/CenturyGolem-v12', render_mode=None)
     env = FlattenObservation(env)
     
     # Load the trained model and create opponent
-    trained_agent = load_pretrained_model('century_dqn5/models/trained_model_3000.pt')
+    trained_agent = load_pretrained_model('dqn_v6/models/trained_model_6900.pt')
     opponent = RandomAgent(env.action_space.n)
     
     # Run multiple episodes and get statistics

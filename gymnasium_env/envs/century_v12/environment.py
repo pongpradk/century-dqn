@@ -59,69 +59,21 @@ class CenturyGolemEnv(gym.Env):
         self.current_player.merchant_cards = [CardStatus.PLAYABLE.value if card == CardStatus.UNPLAYABLE.value else card for card in self.current_player.merchant_cards]
         return GAME_CONSTANTS['REWARDS']['REST']
     
-    def _calculate_card_value(self, card, player_state):
-        """Calculate strategic value of a merchant card given current game state"""
-        if card.card_type == "crystal":
-            # Simple valuation for crystal cards
-            yellow_gain = card.gain.get("yellow", 0)
-            green_gain = card.gain.get("green", 0)
-            
-            # Adjust values based on crystal scarcity
-            yellow_value = 0.3 * yellow_gain
-            green_value = 1.0 * green_gain
-            
-            # Bonus for balanced crystals
-            current_yellow = player_state.caravan["yellow"]
-            current_green = player_state.caravan["green"]
-            balance_factor = 1.0
-            
-            # If lacking yellow and card gives yellow
-            if current_yellow < 2 and yellow_gain > 0:
-                balance_factor = 1.5
-            
-            # If lacking green and card gives green
-            if current_green < 2 and green_gain > 0:
-                balance_factor = 1.5
-            
-            return (yellow_value + green_value) * balance_factor
-        
-        elif card.card_type == "trade":
-            # Evaluate trade cards by net gain
-            cost_value = sum(GAME_CONSTANTS['CRYSTAL_VALUES'][crystal] * amount 
-                           for crystal, amount in card.cost.items())
-            gain_value = sum(GAME_CONSTANTS['CRYSTAL_VALUES'][crystal] * amount 
-                           for crystal, amount in card.gain.items())
-            return gain_value - cost_value
-        
-        elif card.card_type == "upgrade":
-            # Upgrade cards value depends on yellow availability
-            yellow_available = player_state.caravan["yellow"]
-            max_upgrades = min(card.gain, yellow_available)
-            return max_upgrades * (GAME_CONSTANTS['CRYSTAL_VALUES']['green'] - 
-                                GAME_CONSTANTS['CRYSTAL_VALUES']['yellow'])
-        
-        return 0.0
-
     def _handle_get_merchant_card(self, action):
-        card_id = action + 2
+        card_id = action + 2  # e.g. M3 = action 1 + 2
         
         if self.merchant_deck[card_id] in self.merchant_market:
-            # Calculate card value based on strategy
-            card_value_modifier = 1.0
-            card = self.merchant_deck[card_id]
-            strategic_value = self._calculate_card_value(card, self.current_player)
-            
-            # Execute standard acquisition logic
             self.current_player.merchant_cards[card_id - 1] = CardStatus.PLAYABLE.value
             self.merchant_deck[card_id].owned = True
             self.merchant_market.remove(self.merchant_deck[card_id])
             self._draw_merchant_card()
             
-            # Calculate reward based on strategic value
-            reward = GAME_CONSTANTS['REWARDS']['GET_MERCHANT_CARD'] + strategic_value
+            # Progressive discount based on number of cards already owned
+            owned_count = sum(1 for status in self.current_player.merchant_cards if status > 0)
+            card_value = max(0.5, GAME_CONSTANTS['REWARDS']['GET_MERCHANT_CARD'] * (1 - 0.15 * (owned_count - 2)))
             
-            return max(0.1, reward)  # Ensure minimum positive reward
-        
+            return card_value
+
         raise InvalidActionError(f"Card M{card_id} is not in market")
 
     def _handle_crystal_card(self, card, card_index):
@@ -229,8 +181,7 @@ class CenturyGolemEnv(gym.Env):
             }),
             "player1_merchant_cards": spaces.MultiDiscrete([3] * 10),
             "player1_golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),
-            "player1_golem_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
-            "player1_total_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
+            "player1_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
             
             "player2_caravan": spaces.Dict({
                 crystal: spaces.Box(low=0, high=20, shape=(1,), dtype=np.int32)
@@ -238,8 +189,7 @@ class CenturyGolemEnv(gym.Env):
             }),
             "player2_merchant_cards": spaces.MultiDiscrete([3] * 10),
             "player2_golem_count": spaces.Box(low=0, high=5, shape=(1,), dtype=np.int32),
-            "player2_golem_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
-            "player2_total_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
+            "player2_points": spaces.Box(low=0, high=100, shape=(1,), dtype=np.int32),
         })
         
         self.merchant_deck = self.create_merchant_deck()
@@ -297,21 +247,9 @@ class CenturyGolemEnv(gym.Env):
         player1_golem_count = np.clip(np.array([player1.golem_count], dtype=np.int32), 0, 5)
         player2_golem_count = np.clip(np.array([player2.golem_count], dtype=np.int32), 0, 5)
         
-        # Calculate total points including green crystals
-        player1_golem_points = player1.points
-        player1_crystal_points = player1.caravan["green"]
-        player1_total_points = player1_golem_points + player1_crystal_points
-        
-        player2_golem_points = player2.points
-        player2_crystal_points = player2.caravan["green"]
-        player2_total_points = player2_golem_points + player2_crystal_points
-        
-        # Use both in observation
-        player1_points = np.clip(np.array([player1_golem_points], dtype=np.int32), 0, 100)
-        player1_total_points = np.clip(np.array([player1_total_points], dtype=np.int32), 0, 100)
-        
-        player2_points = np.clip(np.array([player2_golem_points], dtype=np.int32), 0, 100)
-        player2_total_points = np.clip(np.array([player2_total_points], dtype=np.int32), 0, 100)
+        # Ensure points are within [0, 100] range
+        player1_points = np.clip(np.array([player1.points], dtype=np.int32), 0, 100)
+        player2_points = np.clip(np.array([player2.points], dtype=np.int32), 0, 100)
         
         return {
             "merchant_market": np.array(merchant_market_state, dtype=np.int32),
@@ -320,14 +258,12 @@ class CenturyGolemEnv(gym.Env):
             "player1_caravan": player1_caravan,
             "player1_merchant_cards": merchant_cards_state,
             "player1_golem_count": player1_golem_count,
-            "player1_golem_points": player1_points,
-            "player1_total_points": player1_total_points,
+            "player1_points": player1_points,
             
             "player2_caravan": player2_caravan,
             "player2_merchant_cards": np.clip(np.array(player2.merchant_cards, dtype=np.int32), 0, 2),
             "player2_golem_count": player2_golem_count,
-            "player2_golem_points": player2_points,
-            "player2_total_points": player2_total_points,
+            "player2_points": player2_points,
         }
 
     def _get_info(self):

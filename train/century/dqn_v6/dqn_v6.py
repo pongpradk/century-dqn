@@ -61,41 +61,6 @@ class DQN(nn.Module):
         return self.fc4(x)
 
 
-class RND(nn.Module):
-    """Random Network Distillation for intrinsic motivation"""
-    def __init__(self, state_size):
-        super(RND, self).__init__()
-        # Target network (fixed random weights)
-        self.target = nn.Sequential(
-            nn.Linear(state_size, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, 32)
-        )
-        
-        # Predictor network (trained to match target)
-        self.predictor = nn.Sequential(
-            nn.Linear(state_size, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, 32)
-        )
-        
-        # Initialize target network with random weights and freeze it
-        for param in self.target.parameters():
-            param.requires_grad = False
-    
-    def forward(self, state):
-        target_feature = self.target(state)
-        predict_feature = self.predictor(state)
-        
-        # Intrinsic reward is prediction error
-        intrinsic_reward = F.mse_loss(predict_feature, target_feature, reduction='none').sum(dim=1)
-        return intrinsic_reward
-
-
 class DQNAgent:
     def __init__(self, state_size, action_size, config):
         self.state_size = state_size
@@ -123,27 +88,11 @@ class DQNAgent:
         # Initialize optimizer
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=self.learning_rate)
 
-        # Add RND for intrinsic motivation
-        self.rnd = RND(state_size).to(self.device)
-        self.rnd_optimizer = optim.Adam(self.rnd.predictor.parameters(), lr=config.learning_rate)
-        self.intrinsic_reward_scale = 0.1  # Scale factor for intrinsic rewards
-
     def update_target_network(self):
         """Method to set the Main NN's weights on the Target NN"""
         self.target_network.load_state_dict(self.main_network.state_dict())
 
     def save_experience(self, state, action, reward, next_state, terminal):
-        # Calculate intrinsic reward
-        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        with torch.no_grad():
-            intrinsic_reward = self.rnd(state_tensor).item()
-        
-        # Scale and clip intrinsic reward
-        intrinsic_reward = min(1.0, self.intrinsic_reward_scale * intrinsic_reward)
-        
-        # Combine with extrinsic reward
-        combined_reward = reward + intrinsic_reward
-        
         # Set higher priority for:
         # 1. Terminal states (game endings)
         # 2. High rewards (likely golem acquisitions)
@@ -156,12 +105,32 @@ class DQNAgent:
             priority *= 3.0
         
         # High rewards
-        if combined_reward > 5.0:
+        if reward > 5.0:
             priority *= 2.0
         
         # Check action type
         if action >= 19 and action <= 23:  # Golem acquisition actions
             priority *= 4.0  # Heavily prioritize golem actions
+        
+        # Apply merchant card hoarding penalty
+        # Actions 1-8 correspond to getM3 through getM10
+        if action >= 1 and action <= 8:
+            # Count how many merchant cards the agent already has (excluding the starting M1, M2)
+            # In the state, merchant cards status is 0 (not owned), 1 (owned but unplayable), 2 (owned and playable)
+            # We extract the slice of the state containing merchant card status (indices 24-33 in the observation)
+            merchant_cards = state[24:34]  # This gets the status of all 10 merchant cards
+            owned_cards = sum(1 for card_status in merchant_cards if card_status > 0)
+            
+            # Apply diminishing returns - reduce reward based on cards already owned
+            # Start reducing reward after 3 additional cards (5 total including starting M1, M2)
+            if owned_cards > 3:
+                # Exponential penalty factor that grows as more cards are acquired
+                penalty_factor = 1.0 - min(0.8, 0.2 * (owned_cards - 3))
+                # Modify the actual experience's reward value (not just the priority)
+                reward = reward * penalty_factor
+                
+                # Also reduce the priority of collecting more cards when we already have many
+                priority *= penalty_factor
         
         # Add action count tracking if it doesn't exist
         if not hasattr(self, 'action_counts'):
@@ -174,11 +143,11 @@ class DQNAgent:
         rarity_factor = np.sum(self.action_counts) / (self.action_counts[action] * self.action_size)
         priority *= min(3.0, rarity_factor)  # Cap at 3x priority
         
-        self.replay_buffer.append((state, action, combined_reward, intrinsic_reward, next_state, terminal, priority))
+        self.replay_buffer.append((state, action, reward, next_state, terminal, priority))
 
     def sample_experience_batch(self, batch_size):
         # Sample based on priority
-        priorities = np.array([exp[6] for exp in self.replay_buffer])
+        priorities = np.array([exp[5] for exp in self.replay_buffer])
         probs = priorities / np.sum(priorities)
         indices = np.random.choice(len(self.replay_buffer), batch_size, p=probs)
         exp_batch = [self.replay_buffer[idx] for idx in indices]
@@ -187,11 +156,10 @@ class DQNAgent:
         state_batch = torch.FloatTensor(np.array([batch[0] for batch in exp_batch])).to(self.device)
         action_batch = torch.LongTensor(np.array([batch[1] for batch in exp_batch])).to(self.device)
         reward_batch = torch.FloatTensor(np.array([batch[2] for batch in exp_batch])).to(self.device)
-        intrinsic_reward_batch = torch.FloatTensor(np.array([batch[3] for batch in exp_batch])).to(self.device)
-        next_state_batch = torch.FloatTensor(np.array([batch[4] for batch in exp_batch])).to(self.device)
-        terminal_batch = torch.FloatTensor(np.array([batch[5] for batch in exp_batch])).to(self.device)
+        next_state_batch = torch.FloatTensor(np.array([batch[3] for batch in exp_batch])).to(self.device)
+        terminal_batch = torch.FloatTensor(np.array([batch[4] for batch in exp_batch])).to(self.device)
 
-        return state_batch, action_batch, reward_batch, intrinsic_reward_batch, next_state_batch, terminal_batch
+        return state_batch, action_batch, reward_batch, next_state_batch, terminal_batch
 
     def pick_epsilon_greedy_action(self, state, info):
             """Epsilon-greedy action selection with valid action masking"""
@@ -206,12 +174,28 @@ class DQNAgent:
             with torch.no_grad():
                 state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
                 q_values = self.main_network(state_tensor)[0].cpu().numpy()
+                
+                # Apply merchant card acquisition penalty
+                # Actions 1-8 correspond to getM3 through getM10
+                merchant_cards = state[24:34]  # This gets the status of all 10 merchant cards
+                owned_cards = sum(1 for card_status in merchant_cards if card_status > 0)
+                
+                # If agent has many cards, reduce Q-values for getting more merchant cards
+                if owned_cards > 3:
+                    # Stronger penalty as agent acquires more cards
+                    penalty = (owned_cards - 3) * 0.5
+                    
+                    # Apply penalty to getM3-getM10 actions (indices 1-8)
+                    for action_idx in range(1, 9):
+                        if valid_actions[action_idx] == 1:  # Only penalize valid actions
+                            q_values[action_idx] -= penalty
+                
                 masked_q_values = np.where(valid_actions == 1, q_values, -np.inf)
                 return np.argmax(masked_q_values)
 
     def train(self, batch_size):
         # Sample a batch of experiences
-        state_batch, action_batch, reward_batch, intrinsic_reward_batch, next_state_batch, terminal_batch = self.sample_experience_batch(batch_size)
+        state_batch, action_batch, reward_batch, next_state_batch, terminal_batch = self.sample_experience_batch(batch_size)
 
         # Create a mask for valid actions in the next state
         # This would require storing valid_actions in replay buffer
@@ -223,7 +207,7 @@ class DQNAgent:
             # Apply valid action masking for next state
             next_q_values[~valid_action_mask.bool()] = -1e9
             max_next_q = next_q_values.max(1)[0]
-            target_q_values = reward_batch + intrinsic_reward_batch + (1 - terminal_batch) * self.gamma * max_next_q
+            target_q_values = reward_batch + (1 - terminal_batch) * self.gamma * max_next_q
 
         # Get current Q values
         current_q_values = self.main_network(state_batch).gather(1, action_batch.unsqueeze(1))
@@ -233,12 +217,6 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-
-        # Also train the RND predictor network
-        self.rnd_optimizer.zero_grad()
-        intrinsic_loss = self.rnd(state_batch).mean()
-        intrinsic_loss.backward()
-        self.rnd_optimizer.step()
 
     def save_checkpoint(self, episode, checkpoint_dir="checkpoints"):
         """Save the current state of training to resume later, replacing previous checkpoint files"""
@@ -261,7 +239,8 @@ class DQNAgent:
             'epsilon': self.epsilon,
             'episode': episode,
             'rewards': self.rewards,
-            'epsilon_values': self.epsilon_values
+            'epsilon_values': self.epsilon_values,
+            'merchant_card_counts': getattr(self, 'merchant_card_counts', [])
         }
         torch.save(checkpoint, checkpoint_path)
 
@@ -288,6 +267,9 @@ class DQNAgent:
         self.rewards = checkpoint.get('rewards', [])
         self.epsilon_values = checkpoint.get('epsilon_values', [])
         
+        # Load merchant card counts if available
+        self.merchant_card_counts = checkpoint.get('merchant_card_counts', [])
+        
         # Load replay buffer if provided
         if buffer_path and os.path.exists(buffer_path):
             with open(buffer_path, 'rb') as f:
@@ -306,80 +288,6 @@ class DQNAgent:
         return model_path
         
         
-def preprocess_state(state_dict):
-    """Create a more informative state representation"""
-    # Extract existing information
-    processed_state = []
-    
-    # Add merchant market information
-    processed_state.extend(state_dict["merchant_market"])
-    
-    # Add golem market information
-    processed_state.extend(state_dict["golem_market"])
-    
-    # Add player caravan info
-    for crystal in ["yellow", "green"]:
-        processed_state.append(state_dict["player1_caravan"][crystal][0])
-    
-    # Add merchant card ownership
-    processed_state.extend(state_dict["player1_merchant_cards"])
-    
-    # Add golem count and points
-    processed_state.append(state_dict["player1_golem_count"][0])
-    processed_state.append(state_dict["player1_points"][0])
-    
-    # Add opponent info
-    for crystal in ["yellow", "green"]:
-        processed_state.append(state_dict["player2_caravan"][crystal][0])
-    processed_state.extend(state_dict["player2_merchant_cards"])
-    processed_state.append(state_dict["player2_golem_count"][0])
-    processed_state.append(state_dict["player2_points"][0])
-    
-    # Add derived features
-    
-    # 1. Resource efficiency metrics
-    p1_yellow = state_dict["player1_caravan"]["yellow"][0]
-    p1_green = state_dict["player1_caravan"]["green"][0]
-    total_crystals = p1_yellow + p1_green
-    
-    # Crystal ratio (how balanced are resources)
-    crystal_ratio = 0.5
-    if total_crystals > 0:
-        crystal_ratio = p1_green / total_crystals
-    processed_state.append(crystal_ratio)
-    
-    # Crystal utilization (how close to capacity)
-    crystal_utilization = total_crystals / 10  # Normalized by max capacity
-    processed_state.append(crystal_utilization)
-    
-    # 2. Golem acquisition readiness
-    # For each golem in market, how close are we to acquiring it?
-    for i, golem_id in enumerate(state_dict["golem_market"]):
-        if golem_id >= 5:  # Invalid golem
-            readiness = 0
-        else:
-            # Simplified readiness metric
-            golem_costs = {
-                1: {"yellow": 2, "green": 2},  # G1-Y2G2
-                2: {"yellow": 3, "green": 2},  # G2-Y3G2
-                3: {"yellow": 2, "green": 3},  # G3-Y2G3
-                4: {"yellow": 0, "green": 4},  # G4-G4
-                5: {"yellow": 0, "green": 5}   # G5-G5
-            }
-            if golem_id in golem_costs:
-                cost = golem_costs[golem_id]
-                yellow_needed = max(0, cost["yellow"] - p1_yellow)
-                green_needed = max(0, cost["green"] - p1_green)
-                
-                # Readiness is inverse of total needed (normalized)
-                total_needed = yellow_needed + green_needed
-                readiness = 1.0 if total_needed == 0 else 1.0 / (1.0 + total_needed)
-            else:
-                readiness = 0
-        processed_state.append(readiness)
-    
-    return np.array(processed_state, dtype=np.float32)
-
 def train_dqn(config, num_episodes, checkpoint_path=None):
     env = gym.make("gymnasium_env/CenturyGolem-v12")
     env = FlattenObservation(env)
@@ -402,6 +310,9 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
     dqn_agent.rewards = []
     dqn_agent.epsilon_values = []
     
+    # Track merchant card hoarding
+    dqn_agent.merchant_card_counts = []
+    
     # Start episode counter
     start_episode = 0
     
@@ -412,16 +323,14 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
         print(f"Resuming training from episode {start_episode}")
 
     try:
-        # Modify state processing
-        def process_observation(obs):
-            return preprocess_state(obs)
-        
         for ep in range(start_episode, num_episodes):
             dqn_total_reward = 0
             opponent_total_reward = 0
             
             state, info = env.reset()
-            state = process_observation(state)
+            
+            # Track merchant card acquisitions in this episode
+            merchant_cards_acquired = 0
 
             print(f'\nTraining on EPISODE {ep+1} with epsilon {dqn_agent.epsilon}')
             start = time.time()
@@ -435,6 +344,11 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
 
                 if info['current_player'] == 0:
                     action = dqn_agent.pick_epsilon_greedy_action(state, info)
+                    
+                    # Track merchant card acquisitions (actions 1-8 are getM3-getM10)
+                    if action >= 1 and action <= 8:
+                        merchant_cards_acquired += 1
+                        
                     next_state, reward, terminal, _, info = env.step(action)
                     
                     dqn_total_reward += reward
@@ -467,11 +381,14 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
                 if len(dqn_agent.replay_buffer) > batch_size:
                     dqn_agent.train(batch_size)
 
-                # Update state
-                state = process_observation(next_state)
-
             dqn_agent.rewards.append(dqn_total_reward)
             dqn_agent.epsilon_values.append(dqn_agent.epsilon)
+            dqn_agent.merchant_card_counts.append(merchant_cards_acquired)
+            
+            # Print merchant card acquisition stats periodically
+            if ep % 10 == 0:
+                avg_cards = sum(dqn_agent.merchant_card_counts[-10:]) / min(10, len(dqn_agent.merchant_card_counts[-10:]))
+                print(f"Avg merchant cards acquired (last 10 ep): {avg_cards:.2f}")
 
             # Update Epsilon value
             if ep % 50 == 0 and ep > 0:
@@ -525,7 +442,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     config_dict = {
-        'episodes': args.episodes if args.episodes is not None else 3000,
+        'episodes': args.episodes if args.episodes is not None else 10000,
         'checkpoint': args.checkpoint if args.checkpoint is not None else None,
         'checkpoint_freq': args.checkpoint_freq if args.checkpoint_freq is not None else 100,
         'model_save_freq': args.model_save_freq if args.model_save_freq is not None else 100,
