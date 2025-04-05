@@ -441,6 +441,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train DQN agent for Century game')
     parser.add_argument('--episodes', type=int, default=None, help='Number of episodes to train')
     parser.add_argument('--checkpoint', type=str, default=None, help='Path to checkpoint file to resume training')
+    parser.add_argument('--reset', action='store_true', help='Flag to explicitly train from scratch (overwrites existing if no checkpoint)')
     parser.add_argument('--checkpoint-freq', type=int, default=None, help='Frequency to save checkpoints')
     parser.add_argument('--model-save-freq', type=int, default=None, help='Frequency to save model versions')
     parser.add_argument('--gamma', type=float, default=None, help='Discount factor for future rewards')
@@ -455,6 +456,12 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
+    # Safety check: prevent accidental training from scratch
+    if args.checkpoint is None and not args.reset:
+        print("Error: To train from scratch, please use the --reset flag.")
+        print("To resume from a checkpoint, use the --checkpoint <path> argument.")
+        exit(1)
+        
     config_dict = {
         'episodes': args.episodes if args.episodes is not None else 50000,
         'checkpoint': args.checkpoint if args.checkpoint is not None else None,
