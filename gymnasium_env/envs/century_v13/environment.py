@@ -124,24 +124,39 @@ class CenturyGolemEnv(gym.Env):
         raise InvalidActionError(f"Not enough crystals for trade card {card.name}")
 
     def _handle_upgrade_card(self, card, card_index):
-        crystals_upgraded = 0
-        for _ in range(card.gain):
-            if self.current_player.caravan["yellow"] > 0:
-                self.current_player.caravan["yellow"] -= 1
-                self.current_player.caravan["green"] += 1
-                crystals_upgraded += 1
-            elif self.current_player.caravan["green"] > 0:
-                self.current_player.caravan["green"] -= 1
-                self.current_player.caravan["blue"] += 1
-                crystals_upgraded += 1
+        upgrade_points = card.gain
+        caravan = self.current_player.caravan
+        total_upgraded = 0
+
+        # Step 1: While we still have upgrade points, upgrade lowest-value crystals upward greedily
+        while upgrade_points > 0:
+            # Try upgrading yellow -> green -> blue (2 upgrades total)
+            if caravan["yellow"] > 0 and upgrade_points >= 2:
+                caravan["yellow"] -= 1
+                caravan["blue"] += 1
+                upgrade_points -= 2
+                total_upgraded += 1
+            # If only 1 upgrade point, upgrade yellow -> green
+            elif caravan["yellow"] > 0 and upgrade_points >= 1:
+                caravan["yellow"] -= 1
+                caravan["green"] += 1
+                upgrade_points -= 1
+                total_upgraded += 1
+            # Upgrade green -> blue (1 upgrade)
+            elif caravan["green"] > 0 and upgrade_points >= 1:
+                caravan["green"] -= 1
+                caravan["blue"] += 1
+                upgrade_points -= 1
+                total_upgraded += 1
             else:
+                # No more crystals to upgrade or no upgrade points left
                 break
-        
-        if crystals_upgraded == 0:
+
+        if total_upgraded == 0:
             raise InvalidActionError("No crystals can be upgraded")
-        
+
         self.current_player.merchant_cards[card_index] = CardStatus.UNPLAYABLE.value
-        return crystals_upgraded
+        return total_upgraded
 
     def _handle_use_merchant_card(self, action):
         card_id = action - Actions.useM1.value + 1
@@ -301,7 +316,7 @@ class CenturyGolemEnv(gym.Env):
     
     def reset(self, seed=None, options=None):
         if self.render_mode == "text":
-            print("Century: Golem Edition | Version 9.1\n")
+            print("Century: Golem Edition | Version 13.0\n")
         
         super().reset(seed=seed)
         
