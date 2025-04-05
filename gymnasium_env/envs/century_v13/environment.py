@@ -126,7 +126,7 @@ class CenturyGolemEnv(gym.Env):
     def _handle_upgrade_card(self, card, card_index):
         upgrade_points = card.gain
         caravan = self.current_player.caravan
-        total_upgraded = 0
+        upgrade_steps_taken = 0 # Track actual upgrade steps
 
         # Step 1: While we still have upgrade points, upgrade lowest-value crystals upward greedily
         while upgrade_points > 0:
@@ -135,28 +135,29 @@ class CenturyGolemEnv(gym.Env):
                 caravan["yellow"] -= 1
                 caravan["blue"] += 1
                 upgrade_points -= 2
-                total_upgraded += 1
+                upgrade_steps_taken += 2 # 2 steps
             # If only 1 upgrade point, upgrade yellow -> green
             elif caravan["yellow"] > 0 and upgrade_points >= 1:
                 caravan["yellow"] -= 1
                 caravan["green"] += 1
                 upgrade_points -= 1
-                total_upgraded += 1
+                upgrade_steps_taken += 1 # 1 step
             # Upgrade green -> blue (1 upgrade)
             elif caravan["green"] > 0 and upgrade_points >= 1:
                 caravan["green"] -= 1
                 caravan["blue"] += 1
                 upgrade_points -= 1
-                total_upgraded += 1
+                upgrade_steps_taken += 1 # 1 step
             else:
                 # No more crystals to upgrade or no upgrade points left
                 break
 
-        if total_upgraded == 0:
+        if upgrade_steps_taken == 0:
             raise InvalidActionError("No crystals can be upgraded")
 
         self.current_player.merchant_cards[card_index] = CardStatus.UNPLAYABLE.value
-        return total_upgraded
+        # Reward based on number of upgrade steps performed
+        return upgrade_steps_taken * 0.5 # Assign a value per step, e.g., 0.5
 
     def _handle_use_merchant_card(self, action):
         card_id = action - Actions.useM1.value + 1

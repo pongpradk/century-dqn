@@ -4,7 +4,7 @@ GAME_CONSTANTS = {
     'CRYSTAL_VALUES': {
         'yellow': 0.3,
         'green': 1.0,
-        'blue': 0.0
+        'blue': 2.5
     },
     'REWARDS': {
         'WIN': 50,

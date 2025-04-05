@@ -1,0 +1,1101 @@
+Century: Golem Edition | Version 9.1
+
+MM: M3-Y3 | M8-G1:Y3 | M10-Y3:G3 | M5-Y1G1 | M7-G2 | M9-Y2:G2
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+GC: 0
+P: 0
+
+P2
+Y: 3
+G: 0
+M1-Y2: playable
+M2-U2: playable
+GC: 0
+P: 0
+
+['1: getM3', '3: getM5', '5: getM7', '6: getM8', '7: getM9', '8: getM10', '9: useM1', '10: useM2']
+==== Random | getM7 ====
+
+MM: M3-Y3 | M8-G1:Y3 | M10-Y3:G3 | M5-Y1G1 | M9-Y2:G2 | M4-Y4
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+GC: 0
+P: 0
+
+P2
+Y: 3
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M7-G2: playable
+GC: 0
+P: 0
+
+['1: getM3', '2: getM4', '3: getM5', '6: getM8', '7: getM9', '8: getM10', '9: useM1', '10: useM2']
+==== DQN | getM9 ====
+
+MM: M3-Y3 | M8-G1:Y3 | M10-Y3:G3 | M5-Y1G1 | M4-Y4 | M6-Y2G1
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M9-Y2:G2: playable
+GC: 0
+P: 0
+
+P2
+Y: 3
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M7-G2: playable
+GC: 0
+P: 0
+
+['1: getM3', '2: getM4', '3: getM5', '4: getM6', '6: getM8', '8: getM10', '9: useM1', '10: useM2', '15: useM7']
+==== Random | getM5 ====
+
+MM: M3-Y3 | M8-G1:Y3 | M10-Y3:G3 | M4-Y4 | M6-Y2G1
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M9-Y2:G2: playable
+GC: 0
+P: 0
+
+P2
+Y: 3
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M7-G2: playable
+GC: 0
+P: 0
+
+['1: getM3', '2: getM4', '4: getM6', '6: getM8', '8: getM10', '9: useM1', '10: useM2', '17: useM9']
+==== DQN | getM10 ====
+
+MM: M3-Y3 | M8-G1:Y3 | M4-Y4 | M6-Y2G1
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 0
+P: 0
+
+P2
+Y: 3
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M7-G2: playable
+GC: 0
+P: 0
+
+['1: getM3', '2: getM4', '4: getM6', '6: getM8', '9: useM1', '10: useM2', '13: useM5', '15: useM7']
+==== Random | getM6 ====
+
+MM: M3-Y3 | M8-G1:Y3 | M4-Y4
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 0
+P: 0
+
+P2
+Y: 3
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 0
+P: 0
+
+['1: getM3', '2: getM4', '6: getM8', '9: useM1', '10: useM2', '17: useM9', '18: useM10']
+==== DQN | getM8 ====
+
+MM: M3-Y3 | M4-Y4
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 0
+P: 0
+
+P2
+Y: 3
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 0
+P: 0
+
+['1: getM3', '2: getM4', '9: useM1', '10: useM2', '13: useM5', '14: useM6', '15: useM7']
+==== Random | useM1 ====
+
+MM: M3-Y3 | M4-Y4
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 0
+P: 0
+
+P2
+Y: 5
+G: 0
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 0
+P: 0
+
+['1: getM3', '2: getM4', '9: useM1', '10: useM2', '17: useM9', '18: useM10']
+==== DQN | getM3 ====
+
+MM: M4-Y4
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M3-Y3: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 0
+P: 0
+
+P2
+Y: 5
+G: 0
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 0
+P: 0
+
+['0: rest', '2: getM4', '10: useM2', '13: useM5', '14: useM6', '15: useM7']
+==== Random | useM5 ====
+
+MM: M4-Y4
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M3-Y3: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 0
+P: 0
+
+P2
+Y: 6
+G: 1
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: unplayable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 0
+P: 0
+
+['2: getM4', '9: useM1', '10: useM2', '11: useM3', '17: useM9', '18: useM10']
+==== DQN | getM4 ====
+
+MM: 
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 0
+P: 0
+
+P2
+Y: 6
+G: 1
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: unplayable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 0
+P: 0
+
+['0: rest', '10: useM2', '14: useM6', '15: useM7']
+==== Random | useM6 ====
+
+MM: 
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 0
+P: 0
+
+P2
+Y: 8
+G: 2
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: unplayable
+M6-Y2G1: unplayable
+M7-G2: playable
+GC: 0
+P: 0
+
+['9: useM1', '10: useM2', '11: useM3', '12: useM4', '17: useM9', '18: useM10']
+==== DQN | useM2 ====
+
+MM: 
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 2
+G: 2
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 0
+P: 0
+
+P2
+Y: 8
+G: 2
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: unplayable
+M6-Y2G1: unplayable
+M7-G2: playable
+GC: 0
+P: 0
+
+['0: rest', '10: useM2', '15: useM7', '19: getG1', '20: getG2']
+==== Random | useM7 ====
+
+MM: 
+GM: G5-G5-10 | G1-Y2G2-6 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 2
+G: 2
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 0
+P: 0
+
+P2
+Y: 6
+G: 4
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: unplayable
+M6-Y2G1: unplayable
+M7-G2: unplayable
+GC: 0
+P: 0
+
+['0: rest', '9: useM1', '11: useM3', '12: useM4', '16: useM8', '17: useM9', '19: getG1']
+==== DQN | getG1 ====
+
+MM: 
+GM: G5-G5-10 | G2-Y3G2-7 | G4-G4-8 | G3-Y2G3-8
+
+P1
+Y: 0
+G: 0
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 1
+P: 6
+
+P2
+Y: 6
+G: 4
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: unplayable
+M6-Y2G1: unplayable
+M7-G2: unplayable
+GC: 0
+P: 0
+
+['0: rest', '10: useM2', '20: getG2', '21: getG3', '22: getG4']
+==== Random | getG3 ====
+
+MM: 
+GM: G5-G5-10 | G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 0
+G: 0
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 1
+P: 6
+
+P2
+Y: 4
+G: 1
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: unplayable
+M6-Y2G1: unplayable
+M7-G2: unplayable
+GC: 1
+P: 8
+
+['0: rest', '9: useM1', '11: useM3', '12: useM4']
+==== DQN | useM3 ====
+
+MM: 
+GM: G5-G5-10 | G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 3
+G: 0
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 1
+P: 6
+
+P2
+Y: 4
+G: 1
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: unplayable
+M6-Y2G1: unplayable
+M7-G2: unplayable
+GC: 1
+P: 8
+
+['0: rest', '10: useM2']
+==== Random | rest ====
+
+MM: 
+GM: G5-G5-10 | G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 3
+G: 0
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 1
+P: 6
+
+P2
+Y: 4
+G: 1
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 1
+P: 8
+
+['0: rest', '9: useM1', '12: useM4', '17: useM9', '18: useM10']
+==== DQN | useM10 ====
+
+MM: 
+GM: G5-G5-10 | G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 0
+G: 3
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: unplayable
+GC: 1
+P: 6
+
+P2
+Y: 4
+G: 1
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 1
+P: 8
+
+['9: useM1', '10: useM2', '13: useM5', '14: useM6', '15: useM7']
+==== Random | useM1 ====
+
+MM: 
+GM: G5-G5-10 | G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 0
+G: 3
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: unplayable
+GC: 1
+P: 6
+
+P2
+Y: 6
+G: 1
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 1
+P: 8
+
+['0: rest', '9: useM1', '12: useM4', '16: useM8']
+==== DQN | useM1 ====
+
+MM: 
+GM: G5-G5-10 | G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 2
+G: 3
+M1-Y2: unplayable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: unplayable
+GC: 1
+P: 6
+
+P2
+Y: 6
+G: 1
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 1
+P: 8
+
+['0: rest', '10: useM2', '13: useM5', '14: useM6', '15: useM7']
+==== Random | useM7 ====
+
+MM: 
+GM: G5-G5-10 | G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 2
+G: 3
+M1-Y2: unplayable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: unplayable
+GC: 1
+P: 6
+
+P2
+Y: 6
+G: 3
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: unplayable
+GC: 1
+P: 8
+
+['0: rest', '12: useM4', '16: useM8', '17: useM9']
+==== DQN | useM9 ====
+
+MM: 
+GM: G5-G5-10 | G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 0
+G: 5
+M1-Y2: unplayable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: unplayable
+GC: 1
+P: 6
+
+P2
+Y: 6
+G: 3
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: unplayable
+GC: 1
+P: 8
+
+['0: rest', '10: useM2', '13: useM5', '14: useM6', '20: getG2']
+==== Random | rest ====
+
+MM: 
+GM: G5-G5-10 | G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 0
+G: 5
+M1-Y2: unplayable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: unplayable
+GC: 1
+P: 6
+
+P2
+Y: 6
+G: 3
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 1
+P: 8
+
+['0: rest', '12: useM4', '16: useM8', '22: getG4', '23: getG5']
+==== DQN | getG5 ====
+
+MM: 
+GM: G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 0
+G: 0
+M1-Y2: unplayable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: unplayable
+GC: 2
+P: 16
+
+P2
+Y: 6
+G: 3
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 1
+P: 8
+
+['9: useM1', '10: useM2', '13: useM5', '14: useM6', '15: useM7', '20: getG2']
+==== Random | useM7 ====
+
+MM: 
+GM: G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 0
+G: 0
+M1-Y2: unplayable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: unplayable
+GC: 2
+P: 16
+
+P2
+Y: 5
+G: 5
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: unplayable
+GC: 1
+P: 8
+
+['0: rest', '12: useM4']
+==== DQN | useM4 ====
+
+MM: 
+GM: G2-Y3G2-7 | G4-G4-8
+
+P1
+Y: 4
+G: 0
+M1-Y2: unplayable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: unplayable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: unplayable
+GC: 2
+P: 16
+
+P2
+Y: 5
+G: 5
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: unplayable
+GC: 1
+P: 8
+
+['0: rest', '9: useM1', '10: useM2', '13: useM5', '14: useM6', '20: getG2', '22: getG4']
+==== Random | getG4 ====
+
+MM: 
+GM: G2-Y3G2-7
+
+P1
+Y: 4
+G: 0
+M1-Y2: unplayable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: unplayable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: unplayable
+GC: 2
+P: 16
+
+P2
+Y: 5
+G: 1
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: unplayable
+GC: 2
+P: 16
+
+['0: rest']
+==== DQN | rest ====
+
+MM: 
+GM: G2-Y3G2-7
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 2
+P: 16
+
+P2
+Y: 5
+G: 1
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: unplayable
+GC: 2
+P: 16
+
+['0: rest', '9: useM1', '10: useM2', '13: useM5', '14: useM6']
+==== Random | rest ====
+
+MM: 
+GM: G2-Y3G2-7
+
+P1
+Y: 4
+G: 0
+M1-Y2: playable
+M2-U2: playable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 2
+P: 16
+
+P2
+Y: 5
+G: 1
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 2
+P: 16
+
+['9: useM1', '10: useM2', '11: useM3', '12: useM4', '17: useM9', '18: useM10']
+==== DQN | useM2 ====
+
+MM: 
+GM: G2-Y3G2-7
+
+P1
+Y: 2
+G: 2
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 2
+P: 16
+
+P2
+Y: 5
+G: 1
+M1-Y2: playable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 2
+P: 16
+
+['9: useM1', '10: useM2', '13: useM5', '14: useM6', '15: useM7']
+==== Random | useM1 ====
+
+MM: 
+GM: G2-Y3G2-7
+
+P1
+Y: 2
+G: 2
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: playable
+M10-Y3:G3: playable
+GC: 2
+P: 16
+
+P2
+Y: 7
+G: 1
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 2
+P: 16
+
+['0: rest', '9: useM1', '11: useM3', '12: useM4', '16: useM8', '17: useM9']
+==== DQN | useM9 ====
+
+MM: 
+GM: G2-Y3G2-7
+
+P1
+Y: 0
+G: 4
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: playable
+GC: 2
+P: 16
+
+P2
+Y: 7
+G: 1
+M1-Y2: unplayable
+M2-U2: playable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 2
+P: 16
+
+['0: rest', '10: useM2', '13: useM5', '14: useM6', '15: useM7']
+==== Random | useM2 ====
+
+MM: 
+GM: G2-Y3G2-7
+
+P1
+Y: 0
+G: 4
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: playable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: playable
+GC: 2
+P: 16
+
+P2
+Y: 5
+G: 3
+M1-Y2: unplayable
+M2-U2: unplayable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 2
+P: 16
+
+['0: rest', '9: useM1', '11: useM3', '12: useM4', '16: useM8']
+==== DQN | useM3 ====
+
+MM: 
+GM: G2-Y3G2-7
+
+P1
+Y: 3
+G: 4
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: playable
+GC: 2
+P: 16
+
+P2
+Y: 5
+G: 3
+M1-Y2: unplayable
+M2-U2: unplayable
+M5-Y1G1: playable
+M6-Y2G1: playable
+M7-G2: playable
+GC: 2
+P: 16
+
+['0: rest', '13: useM5', '14: useM6', '15: useM7', '20: getG2']
+==== Random | useM6 ====
+
+MM: 
+GM: G2-Y3G2-7
+
+P1
+Y: 3
+G: 4
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: playable
+GC: 2
+P: 16
+
+P2
+Y: 6
+G: 4
+M1-Y2: unplayable
+M2-U2: unplayable
+M5-Y1G1: playable
+M6-Y2G1: unplayable
+M7-G2: playable
+GC: 2
+P: 16
+
+['0: rest', '9: useM1', '12: useM4', '16: useM8', '18: useM10', '20: getG2']
+==== DQN | getG2 ====
+
+MM: 
+GM: 
+
+P1
+Y: 0
+G: 2
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: playable
+GC: 3
+P: 23
+
+P2
+Y: 6
+G: 4
+M1-Y2: unplayable
+M2-U2: unplayable
+M5-Y1G1: playable
+M6-Y2G1: unplayable
+M7-G2: playable
+GC: 2
+P: 16
+
+['0: rest', '13: useM5', '15: useM7']
+==== Random | useM7 ====
+
+MM: 
+GM: 
+
+P1
+Y: 0
+G: 2
+M1-Y2: playable
+M2-U2: unplayable
+M3-Y3: unplayable
+M4-Y4: playable
+M8-G1:Y3: playable
+M9-Y2:G2: unplayable
+M10-Y3:G3: playable
+GC: 3
+P: 23
+
+P2
+Y: 4
+G: 6
+M1-Y2: unplayable
+M2-U2: unplayable
+M5-Y1G1: playable
+M6-Y2G1: unplayable
+M7-G2: unplayable
+GC: 2
+P: 16
+
+Episode terminated with Reward: 71.3
