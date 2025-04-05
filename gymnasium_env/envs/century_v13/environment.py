@@ -250,6 +250,8 @@ class CenturyGolemEnv(gym.Env):
         
         self.endgame_triggered = False  # Tracks if endgame was triggered
         self.endgame_initiator = None   # The player who triggered the endgame
+        self.starting_player = None     # Player who starts the game
+        self.round_number = 0           # Current round number
         
         # Render
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -346,6 +348,8 @@ class CenturyGolemEnv(gym.Env):
             
         self.endgame_triggered = False  # Tracks if endgame was triggered
         self.endgame_initiator = None   # The player who triggered the endgame
+        self.starting_player = self.current_player # Track who starts
+        self.round_number = 1           # Reset round counter
         
         observation = self._get_obs(self.current_player)
         info = self._get_info()
@@ -449,9 +453,16 @@ class CenturyGolemEnv(gym.Env):
                 self.winner = "P2"
                 reward -= GAME_CONSTANTS['REWARDS']['WIN']
         
+        # Store player who just finished turn before switching
+        player_finished_turn = self.current_player
+        
         # Switch turn
         self.current_player, self.next_player = self.next_player, self.current_player
         
+        # Increment round if the second player just finished their turn
+        if player_finished_turn != self.starting_player:
+            self.round_number += 1
+            
         observation = self._get_obs(self.current_player)
         info = self._get_info()
         
@@ -462,13 +473,12 @@ class CenturyGolemEnv(gym.Env):
     
     def render(self):
         if self.render_mode == "text":               
+            print(f"Round: {self.round_number}\n") # Display current round
             print("MM: " + " | ".join([f"M{m.card_id}-{m.name}" for m in self.merchant_market]))
             print("GM: " + " | ".join([f"G{g.card_id}-{g.name}-{g.points}" for g in self.golem_market]))
             print("")
             print(f"P{self.player1.player_id}")
-            print(f"Y: {self.player1.caravan['yellow']}")
-            print(f"G: {self.player1.caravan['green']}")
-            print(f"B: {self.player1.caravan['blue']}")
+            print(f"Y:{self.player1.caravan['yellow']} | G:{self.player1.caravan['green']} | B:{self.player1.caravan['blue']}")
             status_map = {1: "unplayable", 2: "playable"}
             for i, card_status in enumerate(self.player1.merchant_cards):
                 if card_status == 0:
@@ -479,9 +489,7 @@ class CenturyGolemEnv(gym.Env):
             print(f"P: {self.player1.points}")
             print("")
             print(f"P{self.player2.player_id}")
-            print(f"Y: {self.player2.caravan['yellow']}")
-            print(f"G: {self.player2.caravan['green']}")
-            print(f"B: {self.player2.caravan['blue']}")
+            print(f"Y:{self.player2.caravan['yellow']} | G:{self.player2.caravan['green']} | B:{self.player2.caravan['blue']}")
             status_map = {1: "unplayable", 2: "playable"}
             for i, card_status in enumerate(self.player2.merchant_cards):
                 if card_status == 0:
