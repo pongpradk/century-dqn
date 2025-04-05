@@ -340,4 +340,4 @@ def main(num_episodes: int = 1000, track_actions: bool = False, track_wins: bool
 
 
 if __name__ == '__main__':
-    main(1000, track_wins=True, track_actions=True, track_sequences=False)
+    main(100, track_wins=True, track_actions=True, track_sequences=True)
