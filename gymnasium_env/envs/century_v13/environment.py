@@ -275,6 +275,8 @@ class CenturyGolemEnv(gym.Env):
             merchant_market_state.append(0) # Use 0 for padding
         
         golem_market_state = [card.card_id for card in self.golem_market]
+        while len(golem_market_state) < 5:
+            golem_market_state.append(0) # Use 0 for padding
         
         # Ensure caravan values are within [0, 20] range
         player1_caravan = {
