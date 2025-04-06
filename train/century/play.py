@@ -1,9 +1,9 @@
 import gymnasium as gym
 import gymnasium_env
-from gymnasium_env.envs.century_v9.enums import Actions
+from gymnasium_env.envs.century_v13.enums import Actions
 import torch
 import numpy as np
-from dqn_v6.dqn_v6 import DQN
+from dqn_v6_1.dqn_v6_1 import DQN
 from gymnasium.wrappers import FlattenObservation
 from random_agent import RandomAgent
 
@@ -11,7 +11,7 @@ from random_agent import RandomAgent
 def load_pretrained_model(path):
     """Load a pretrained DQN model from the path provided as parameter"""
     # Get state and action size from environment
-    env = gym.make('gymnasium_env/CenturyGolem-v12')
+    env = gym.make('gymnasium_env/CenturyGolem-v13')
     env = FlattenObservation(env)
     state, _ = env.reset()
     state_size = len(state)
@@ -44,12 +44,12 @@ def display_valid_actions(info):
 
 if __name__ == '__main__':
     # Create environment
-    env = gym.make('gymnasium_env/CenturyGolem-v12', render_mode='text')
+    env = gym.make('gymnasium_env/CenturyGolem-v13', render_mode='text')
     env = FlattenObservation(env)
     state, info = env.reset()
     
     # Load the trained model
-    trained_agent = load_pretrained_model('dqn_v6/models/trained_model_6900.pt')  # Adjust path as needed
+    trained_agent = load_pretrained_model('dqn_v6_1/models/trained_model_4300.pt')  # Adjust path as needed
     
     total_reward = 0
     max_timesteps = 2000

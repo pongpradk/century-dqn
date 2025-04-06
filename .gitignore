@@ -8,3 +8,5 @@ __pycache__/
 /gymnasium_env/__pycache__
 .DS_Store
 train/century/.DS_Store
+*.pt
+*.pkl

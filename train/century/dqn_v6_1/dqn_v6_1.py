@@ -463,7 +463,7 @@ if __name__ == '__main__':
         exit(1)
         
     config_dict = {
-        'episodes': args.episodes if args.episodes is not None else 50000,
+        'episodes': args.episodes if args.episodes is not None else 9000,
         'checkpoint': args.checkpoint if args.checkpoint is not None else None,
         'checkpoint_freq': args.checkpoint_freq if args.checkpoint_freq is not None else 100,
         'model_save_freq': args.model_save_freq if args.model_save_freq is not None else 100,
