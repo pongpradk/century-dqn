@@ -295,6 +295,9 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
         print("\nTraining interrupted manually.")
     
     finally:
+        # Save rewards log to a pickle file
+        with open("rewards_log.pkl", "wb") as f:
+            pickle.dump(dqn_agent.rewards, f)
         env.close()
 
 if __name__ == '__main__':
@@ -320,7 +323,7 @@ if __name__ == '__main__':
         'episodes': args.episodes if args.episodes is not None else 3000,
         'checkpoint': args.checkpoint if args.checkpoint is not None else None,
         'checkpoint_freq': args.checkpoint_freq if args.checkpoint_freq is not None else 250,
-        'model_save_freq': args.model_save_freq if args.model_save_freq is not None else 500,
+        'model_save_freq': args.model_save_freq if args.model_save_freq is not None else 100,
         'gamma': args.gamma if args.gamma is not None else 0.99,
         'epsilon': args.epsilon if args.epsilon is not None else 1.0,
         'epsilon_decay': args.epsilon_decay if args.epsilon_decay is not None else 0.9995,
