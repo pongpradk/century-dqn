@@ -1,0 +1,267 @@
+import gymnasium as gym
+import gymnasium_env
+from gymnasium.wrappers import FlattenObservation
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+from random_agent import RandomAgent
+import json
+import os
+import importlib
+
+# Configuration: Specify DQN version and model version here
+DQN_VERSION = "v4"
+MODEL_VERSION = "800"
+
+# === Additional configuration for action distribution plotting ===
+plot_action_distribution = True
+episodes_for_action_count = 100
+overwrite_action_count = False
+action_count_dir = "action_count"
+
+# Mapping of DQN versions to environment versions
+DQN_ENV_MAPPING = {
+    "v1": "gymnasium_env/CenturyGolem-v9",
+    "v3": "gymnasium_env/CenturyGolem-v10",
+    "v4": "gymnasium_env/CenturyGolem-v10",
+    "v6_1": "gymnasium_env/CenturyGolem-v13",
+}
+
+# Dynamically set environment, DQN imports, and Actions import based on DQN version
+ENV_VERSION = DQN_ENV_MAPPING[DQN_VERSION]
+DQN_MODULE = f"century_dqn_{DQN_VERSION}.dqn_{DQN_VERSION.replace('_', '')}"
+MODEL_PATH = f"century_dqn_{DQN_VERSION}/models/trained_model_{MODEL_VERSION}.pt"
+ACTIONS_MODULE = f"gymnasium_env.envs.century_{ENV_VERSION.split('-')[-1].lower()}.enums"
+
+# Import the correct DQN class dynamically
+DQN = __import__(DQN_MODULE, fromlist=["DQN"]).DQN
+
+# Import the correct Actions class dynamically
+Actions = __import__(ACTIONS_MODULE, fromlist=["Actions"]).Actions
+
+# === Configuration ===
+model_dir = os.path.join(DQN_MODULE.split('.')[0], "models")
+max_episodes = 3000
+episodes_per_eval = 100 # number of games
+model_filename_format = "trained_model_{}.pt"
+overwrite_existing = False
+results_file = "winrate_log.json"
+
+# Add a flag to control win rate calculation
+auto_calculate_winrate = True
+
+# === Utility to dynamically import DQN class ===
+def import_dqn_class(dqn_import_path):
+    dqn_module = importlib.import_module(dqn_import_path)
+    return dqn_module.DQN
+
+# === Load a single DQN model for evaluation ===
+def load_model(path, state_size, action_size, DQNClass):
+    model = DQNClass(state_size, action_size)
+    model.load_state_dict(torch.load(path))
+    model.eval()
+    return model
+
+# === Select action from trained agent ===
+def select_trained_agent_action(state, model, info):
+    with torch.no_grad():
+        state_tensor = torch.FloatTensor(state).unsqueeze(0)
+        q_values = model(state_tensor)[0].numpy()
+        valid_actions = info['valid_actions']
+        masked_q_values = np.where(valid_actions == 1, q_values, -np.inf)
+        return int(np.argmax(masked_q_values))
+
+# === Evaluate a model by playing episodes ===
+def evaluate_model(model, env, opponent, num_episodes):
+    def select_action(state, model, info):
+        with torch.no_grad():
+            state_tensor = torch.FloatTensor(state).unsqueeze(0)
+            q_values = model(state_tensor)[0].numpy()
+            valid_actions = info['valid_actions']
+            masked_q_values = np.where(valid_actions == 1, q_values, -np.inf)
+            return int(np.argmax(masked_q_values))
+
+    wins = 0
+    for _ in range(num_episodes):
+        state, info = env.reset()
+        done = False
+        total_reward = 0
+
+        for _ in range(2000):  # safety limit on steps
+            if info['current_player'] == 0:
+                action = select_action(state, model, info)
+                next_state, reward, done, _, info = env.step(action)
+                total_reward += reward
+
+                if not done and info['current_player'] == 1:
+                    opponent_action = opponent.pick_action(next_state, info)
+                    next_state, _, done, _, info = env.step(opponent_action)
+
+                state = next_state
+            elif info['current_player'] == 1:
+                opponent_action = opponent.pick_action(state, info)
+                next_state, _, done, _, info = env.step(opponent_action)
+                state = next_state
+
+            if done:
+                break
+
+        if info.get('winner') == 'P1':
+            wins += 1
+
+    return wins / num_episodes
+
+# === Main Evaluation Loop ===
+def main():
+    if not auto_calculate_winrate:
+        print("Win rate calculation is disabled.")
+        return
+
+    # Create evaluation environment
+    env = gym.make(ENV_VERSION)
+    env = FlattenObservation(env)
+    state, _ = env.reset()
+    state_size = len(state)
+    action_size = env.action_space.n
+    opponent = RandomAgent(action_size)
+
+    # Load existing results if available
+    if os.path.exists(results_file):
+        with open(results_file, 'r') as f:
+            results = json.load(f)
+    else:
+        results = {}
+
+    # Automatically detect models in the directory
+    available_models = [
+        int(f.split('_')[-1].split('.')[0])
+        for f in os.listdir(model_dir)
+        if f.startswith("trained_model_") and f.endswith(".pt")
+    ]
+    available_models = [ep for ep in available_models if ep <= max_episodes]
+    available_models.sort()
+
+    for episode in available_models:
+        if not overwrite_existing and str(episode) in results:
+            print(f"Skipping episode {episode}, result already exists.")
+            continue
+
+        model_path = os.path.join(model_dir, model_filename_format.format(episode))
+        if not os.path.exists(model_path):
+            print(f"Model not found: {model_path}")
+            continue
+
+        model = load_model(model_path, state_size, action_size, DQN)
+        win_rate = evaluate_model(model, env, opponent, episodes_per_eval)
+
+        print(f"Episode {episode}: Win rate = {win_rate:.2%}")
+        results[str(episode)] = win_rate
+
+        # Save results after each evaluation
+        with open(results_file, 'w') as f:
+            json.dump(results, f, indent=4)
+
+    env.close()
+
+    # Plot win rate using results file data
+    if auto_calculate_winrate:
+        episode_counts = sorted([int(k) for k in results.keys()])
+        win_rates = [results[str(ep)] for ep in episode_counts]
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(episode_counts, win_rates, label="DQN")
+        plt.xlabel("Training Episodes", fontsize=16)
+        plt.ylabel("Win Rate of DQN Agent", fontsize=16)
+        plt.ylim(0, 1)
+        plt.xticks(fontsize=16)
+        plt.yticks(fontsize=16)
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig("winrate_vs_training.png")
+        plt.show()
+
+if __name__ == "__main__":
+    main()
+
+
+# === Restore action distribution plotting ===
+import sys
+if plot_action_distribution:
+    os.makedirs(action_count_dir, exist_ok=True)
+    action_data_filename = f"{DQN_VERSION}_ep{MODEL_VERSION}.json"
+    action_data_path = os.path.join(action_count_dir, action_data_filename)
+
+    # Setup environment and model parameters
+    env = gym.make(ENV_VERSION)
+    env = FlattenObservation(env)
+    state, _ = env.reset()
+    state_size = len(state)
+    action_size = env.action_space.n
+    opponent = RandomAgent(action_size)
+
+    if not overwrite_action_count and os.path.exists(action_data_path):
+        with open(action_data_path, "r") as f:
+            avg_action_counts = np.array(json.load(f))
+    else:
+        def evaluate_action_distribution(model, env, opponent, num_episodes, action_size):
+            action_counts = np.zeros(action_size, dtype=int)
+            def select_action(state, model, info):
+                with torch.no_grad():
+                    state_tensor = torch.FloatTensor(state).unsqueeze(0)
+                    q_values = model(state_tensor)[0].numpy()
+                    valid_actions = info['valid_actions']
+                    masked_q_values = np.where(valid_actions == 1, q_values, -np.inf)
+                    return int(np.argmax(masked_q_values))
+            for _ in range(num_episodes):
+                state, info = env.reset()
+                done = False
+                for _ in range(2000):
+                    if info['current_player'] == 0:
+                        action = select_action(state, model, info)
+                        action_counts[action] += 1
+                        next_state, _, done, _, info = env.step(action)
+                        if not done and info['current_player'] == 1:
+                            opponent_action = opponent.pick_action(next_state, info)
+                            next_state, _, done, _, info = env.step(opponent_action)
+                        state = next_state
+                    elif info['current_player'] == 1:
+                        opponent_action = opponent.pick_action(state, info)
+                        next_state, _, done, _, info = env.step(opponent_action)
+                        state = next_state
+                    if done:
+                        break
+            return action_counts / num_episodes
+
+        model = load_model(MODEL_PATH, state_size, action_size, DQN)
+        avg_action_counts = evaluate_action_distribution(model, env, opponent, episodes_for_action_count, action_size)
+        with open(action_data_path, "w") as f:
+            json.dump(avg_action_counts.tolist(), f, indent=4)
+
+    custom_order = [0] + list(range(9, 24)) + list(range(1, 9))
+    action_labels = [Actions(i).name for i in custom_order]
+    avg_action_counts = avg_action_counts[custom_order]
+
+    bar_colors = []
+    for i in custom_order:
+        if i == 0:
+            bar_colors.append("tab:blue")
+        elif 9 <= i <= 18:
+            bar_colors.append("tab:orange")
+        elif 19 <= i <= 23:
+            bar_colors.append("tab:green")
+        elif 1 <= i <= 8:
+            bar_colors.append("tab:red")
+        else:
+            bar_colors.append("gray")
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(action_labels, avg_action_counts, color=bar_colors)
+    plt.ylabel("Average Count per Game", fontsize=16)
+    plt.xlabel("Action", fontsize=16)
+    plt.xticks(rotation=45, fontsize=14)
+    plt.yticks(fontsize=14)
+    # plt.title(f"Action Distribution (Model {MODEL_VERSION}, {episodes_for_action_count} games)", fontsize=16)
+    plt.tight_layout()
+    plt.savefig(f"action_distribution_{DQN_VERSION}_ep{MODEL_VERSION}.png")
+    plt.show()
