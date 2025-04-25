@@ -10,13 +10,13 @@ import os
 import importlib
 
 # Configuration: Specify DQN version and model version here
-DQN_VERSION = "v4"
-MODEL_VERSION = "800"
+DQN_VERSION = "v7"
+MODEL_VERSION = "200"
 
 # === Additional configuration for action distribution plotting ===
 plot_action_distribution = True
 episodes_for_action_count = 100
-overwrite_action_count = False
+overwrite_action_count = True
 action_count_dir = "action_count"
 
 # Mapping of DQN versions to environment versions
@@ -24,13 +24,18 @@ DQN_ENV_MAPPING = {
     "v1": "gymnasium_env/CenturyGolem-v9",
     "v3": "gymnasium_env/CenturyGolem-v10",
     "v4": "gymnasium_env/CenturyGolem-v10",
+    "v6": "gymnasium_env/CenturyGolem-v12",
     "v6_1": "gymnasium_env/CenturyGolem-v13",
+    "v6_2": "gymnasium_env/CenturyGolem-v14",
+    "v7": "gymnasium_env/CenturyGolem-v14",
 }
 
 # Dynamically set environment, DQN imports, and Actions import based on DQN version
 ENV_VERSION = DQN_ENV_MAPPING[DQN_VERSION]
-DQN_MODULE = f"century_dqn_{DQN_VERSION}.dqn_{DQN_VERSION.replace('_', '')}"
-MODEL_PATH = f"century_dqn_{DQN_VERSION}/models/trained_model_{MODEL_VERSION}.pt"
+# DQN_MODULE = f"century_dqn_{DQN_VERSION}.dqn_{DQN_VERSION.replace('_', '')}"
+# MODEL_PATH = f"century_dqn_{DQN_VERSION}/models/trained_model_{MODEL_VERSION}.pt"
+DQN_MODULE = f"dqn_{DQN_VERSION}.dqn_{DQN_VERSION}"
+MODEL_PATH = f"dqn_{DQN_VERSION}/models/trained_model_{MODEL_VERSION}.pt"
 ACTIONS_MODULE = f"gymnasium_env.envs.century_{ENV_VERSION.split('-')[-1].lower()}.enums"
 
 # Import the correct DQN class dynamically
@@ -41,11 +46,11 @@ Actions = __import__(ACTIONS_MODULE, fromlist=["Actions"]).Actions
 
 # === Configuration ===
 model_dir = os.path.join(DQN_MODULE.split('.')[0], "models")
-max_episodes = 3000
+max_episodes = 19000
 episodes_per_eval = 100 # number of games
 model_filename_format = "trained_model_{}.pt"
 overwrite_existing = False
-results_file = "winrate_log.json"
+results_file = f"winrate_log_{DQN_VERSION}.json"
 
 # Add a flag to control win rate calculation
 auto_calculate_winrate = True
@@ -263,5 +268,5 @@ if plot_action_distribution:
     plt.yticks(fontsize=14)
     # plt.title(f"Action Distribution (Model {MODEL_VERSION}, {episodes_for_action_count} games)", fontsize=16)
     plt.tight_layout()
-    plt.savefig(f"action_distribution_{DQN_VERSION}_ep{MODEL_VERSION}.png")
+    plt.savefig(f"dqn_{DQN_VERSION}_ep{MODEL_VERSION}_ad.png")
     plt.show()
