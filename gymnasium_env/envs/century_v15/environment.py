@@ -213,13 +213,13 @@ class CenturyGolemEnv(gym.Env):
             elif card.card_type == "upgrade":
                 reward = self._handle_upgrade_card(card, card_index)
         
-        # If the player has both yellow and green crystals after using the card and is close to but not over the crystal limit
-        # total_crystals = self.current_player.caravan["yellow"] + self.current_player.caravan["green"] + self.current_player.caravan["blue"] + self.current_player.caravan["pink"]
-        # if (self.current_player.caravan["yellow"] > 0 and 
-        #     self.current_player.caravan["green"] > 0 and
-        #     total_crystals >= 5 and total_crystals <= GAME_CONSTANTS['MAX_CRYSTALS']):
-        #     return reward + GAME_CONSTANTS['REWARDS']['CRYSTAL_MANAGEMENT']
-        
+        # If the player has a balanced mix of crystals and is managing their inventory well
+        total_crystals = self.current_player.caravan["yellow"] + self.current_player.caravan["green"] + self.current_player.caravan["blue"] + self.current_player.caravan["pink"]
+        if (self.current_player.caravan["yellow"] > 0 and 
+            self.current_player.caravan["green"] > 0 and
+            total_crystals >= 5 and total_crystals <= GAME_CONSTANTS['MAX_CRYSTALS']):
+            return reward + GAME_CONSTANTS['REWARDS']['CRYSTAL_MANAGEMENT']
+            
         return reward
     
     def _handle_get_golem_card(self, action):
