@@ -7,6 +7,13 @@ import argparse
 from collections import deque
 import math
 
+"""
+DQN implementation for Century: Golem Edition.
+This version (v9_1) uses a strategic agent as an opponent during training
+instead of a random agent, which should result in more effective learning
+and a more robust policy.
+"""
+
 import gymnasium as gym
 import numpy as np
 import torch
@@ -16,7 +23,7 @@ from torch.nn import functional as F
 
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
-import sys; sys.path.append('..'); from random_agent import RandomAgent
+import sys; sys.path.append('..'); from strategic_agent import StrategicAgent
 
 
 class DQNConfig:
@@ -72,6 +79,11 @@ class DQNAgent:
         
         # Track rewards for learning rate scheduling
         self.rewards = []
+
+        # Track timesteps for plotting
+        self.timesteps_per_episode = []
+        self.cumulative_timesteps = []
+        self.total_timesteps = 0
 
         # Set algorithm hyperparameters
         self.gamma = config.gamma
@@ -340,7 +352,10 @@ class DQNAgent:
             'epsilon_values': self.epsilon_values,
             'merchant_card_counts': getattr(self, 'merchant_card_counts', []),
             'training_loss': getattr(self, 'training_loss', []),
-            'avg_q_values': getattr(self, 'avg_q_values', [])
+            'avg_q_values': getattr(self, 'avg_q_values', []),
+            'timesteps_per_episode': getattr(self, 'timesteps_per_episode', []),
+            'cumulative_timesteps': getattr(self, 'cumulative_timesteps', []),
+            'total_timesteps': getattr(self, 'total_timesteps', 0)
         }
         torch.save(checkpoint, checkpoint_path)
 
@@ -396,6 +411,11 @@ class DQNAgent:
         self.training_loss = checkpoint.get('training_loss', [])
         self.avg_q_values = checkpoint.get('avg_q_values', [])
         
+        # Load timestep tracking data if available
+        self.timesteps_per_episode = checkpoint.get('timesteps_per_episode', [])
+        self.cumulative_timesteps = checkpoint.get('cumulative_timesteps', [])
+        self.total_timesteps = checkpoint.get('total_timesteps', 0)
+        
         # Load replay buffer if provided
         if buffer_path and os.path.exists(buffer_path):
             with open(buffer_path, 'rb') as f:
@@ -405,16 +425,49 @@ class DQNAgent:
         print(f"Loaded checkpoint from episode {episode}")
         return episode
     
+    def get_episode_to_timestep_mapping(self):
+        """
+        Returns a dictionary mapping episode numbers to cumulative timesteps.
+        Useful for plotting metrics against timesteps instead of episodes.
+        """
+        return {i: self.cumulative_timesteps[i] for i in range(len(self.cumulative_timesteps))}
+    
     def save_model(self, episode, models_dir="models"):
         """Save just the model (not for resuming training, but for inference)"""
         os.makedirs(models_dir, exist_ok=True)
         model_path = os.path.join(models_dir, f"trained_model_{episode}.pt")
         torch.save(self.main_network.state_dict(), model_path)
+        
+        # Save the timestep mapping alongside the model
+        timestep_data = {
+            'episode': episode,
+            'total_timesteps': self.total_timesteps,
+            'cumulative_timesteps': self.cumulative_timesteps
+        }
+        timestep_path = os.path.join(models_dir, f"timestep_data_{episode}.pkl")
+        with open(timestep_path, 'wb') as f:
+            pickle.dump(timestep_data, f)
+            
         print(f"Model saved at episode {episode}")
         return model_path
         
         
 def train_dqn(config, num_episodes, checkpoint_path=None):
+    """
+    Train a DQN agent to play Century Golem against a strategic opponent.
+    
+    The DQN agent learns to play against a strategic agent which uses heuristics
+    and game knowledge to make better decisions than random play. This results in
+    more challenging training and potentially better policy learning.
+    
+    Args:
+        config: Configuration object with hyperparameters
+        num_episodes: Number of episodes to train for
+        checkpoint_path: Optional path to resume training from checkpoint
+        
+    Returns:
+        None
+    """
     env = gym.make("gymnasium_env/CenturyGolem-v16")
     env = FlattenObservation(env)
     state, info = env.reset()
@@ -430,7 +483,7 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
     
     # Initialize agent and opponent
     dqn_agent = DQNAgent(state_size, action_size, config) 
-    opponent = RandomAgent(action_size)
+    opponent = StrategicAgent(action_size)
     
     # Initialize rewards and epsilon_values lists for tracking metrics
     dqn_agent.rewards = []
@@ -461,12 +514,17 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
             
             # Track merchant card acquisitions in this episode
             merchant_cards_acquired = 0
+            
+            # Track timesteps in this episode
+            episode_timesteps = 0
 
             print(f'\nTraining on EPISODE {ep+1} with epsilon {dqn_agent.epsilon:.4f}')
             start = time.time()
 
             for t in range(num_timesteps):
                 time_step += 1
+                episode_timesteps += 1
+                dqn_agent.total_timesteps += 1
 
                 # Update Target Network every update_rate timesteps
                 if time_step % dqn_agent.update_rate == 0:
@@ -511,6 +569,10 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
                 if len(dqn_agent.replay_buffer) > batch_size:
                     dqn_agent.train(batch_size)
 
+            # Track timesteps for this episode
+            dqn_agent.timesteps_per_episode.append(episode_timesteps)
+            dqn_agent.cumulative_timesteps.append(dqn_agent.total_timesteps)
+            
             dqn_agent.rewards.append(dqn_total_reward)
             dqn_agent.epsilon_values.append(dqn_agent.epsilon)
             dqn_agent.merchant_card_counts.append(merchant_cards_acquired)
@@ -531,6 +593,9 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
                 if hasattr(dqn_agent, 'avg_q_values') and len(dqn_agent.avg_q_values) > 0:
                     avg_q = sum(dqn_agent.avg_q_values[-100:]) / min(100, len(dqn_agent.avg_q_values))
                     print(f"Avg Q-value (last 100 actions): {avg_q:.4f}")
+                
+                # Print timestep stats
+                print(f"Total timesteps: {dqn_agent.total_timesteps}, Avg timesteps per episode (last 10): {sum(dqn_agent.timesteps_per_episode[-10:]) / min(10, len(dqn_agent.timesteps_per_episode[-10:])):.1f}")
 
             # Update Epsilon value
             if ep % 25 == 0 and ep > 0:  # Check more frequently (every 25 episodes)
