@@ -12,4 +12,5 @@ from gymnasium_env.envs.century_v12 import CenturyGolemEnv
 from gymnasium_env.envs.century_v13 import CenturyGolemEnv
 from gymnasium_env.envs.century_v14 import CenturyGolemEnv
 from gymnasium_env.envs.century_v15 import CenturyGolemEnv
+from gymnasium_env.envs.century_v16 import CenturyGolemEnv
 __all__ = ['CenturyGolemEnv']
