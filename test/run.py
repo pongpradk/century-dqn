@@ -2,9 +2,9 @@ import gymnasium
 import gymnasium_env
 import numpy as np
 from gymnasium.wrappers import FlattenObservation
-from gymnasium_env.envs.century_v13.enums import Actions
+from gymnasium_env.envs.century_v16.enums import Actions
 
-env = gymnasium.make('gymnasium_env/CenturyGolem-v13', render_mode='text')
+env = gymnasium.make('gymnasium_env/CenturyGolem-v16', render_mode='text')
 # env = FlattenObservation(env)
 
 def random(n_timesteps=10):
@@ -141,4 +141,4 @@ def dqn_vs_random(turns=5):
     print(f"Reward: {tot_reward}")
     env.close()
     
-manual_vs_random(1000)
+valid_random(2000)

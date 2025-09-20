@@ -1,17 +1,51 @@
 import gymnasium as gym
 import gymnasium_env
-from gymnasium_env.envs.century_v13.enums import Actions
+from gymnasium.wrappers import FlattenObservation
 import torch
 import numpy as np
-from dqn_v6_1.dqn_v6_1 import DQN
-from gymnasium.wrappers import FlattenObservation
 from random_agent import RandomAgent
 
+# Configuration: Specify DQN version and model version here
+DQN_VERSION = "v9_2"
+
+# Mapping of DQN versions to environment versions
+DQN_ENV_MAPPING = {
+    "v1": "gymnasium_env/CenturyGolem-v9",
+    "v3": "gymnasium_env/CenturyGolem-v10",
+    "v4": "gymnasium_env/CenturyGolem-v10",
+    "v5_1": "gymnasium_env/CenturyGolem-v11",
+    "v6": "gymnasium_env/CenturyGolem-v12",
+    "v6_1": "gymnasium_env/CenturyGolem-v13",
+    "v6_2": "gymnasium_env/CenturyGolem-v14",
+    "v7": "gymnasium_env/CenturyGolem-v14",
+    "v7_1": "gymnasium_env/CenturyGolem-v14",
+    "v7_2": "gymnasium_env/CenturyGolem-v14",
+    "v8": "gymnasium_env/CenturyGolem-v15",
+    "v8_1": "gymnasium_env/CenturyGolem-v15",
+    "v8_2": "gymnasium_env/CenturyGolem-v15",
+    "v9": "gymnasium_env/CenturyGolem-v16",
+    "v9_1": "gymnasium_env/CenturyGolem-v16",
+    "v9_2": "gymnasium_env/CenturyGolem-v16",
+}
+
+# Dynamically set environment, DQN imports, and Actions import based on DQN version
+ENV_VERSION = DQN_ENV_MAPPING[DQN_VERSION]
+# DQN_MODULE = f"century_dqn_{DQN_VERSION}.dqn_{DQN_VERSION.replace('_', '')}"
+# MODEL_PATH = f"century_dqn_{DQN_VERSION}/models/trained_model_{MODEL_VERSION}.pt"
+DQN_MODULE = f"dqn_{DQN_VERSION}.dqn_{DQN_VERSION}"
+MODEL_PATH = f"dqn_{DQN_VERSION}/models/trained_model_{MODEL_VERSION}.pt"
+ACTIONS_MODULE = f"gymnasium_env.envs.century_{ENV_VERSION.split('-')[-1].lower()}.enums"
+
+# Import the correct DQN class dynamically
+DQN = __import__(DQN_MODULE, fromlist=["DQN"]).DQN
+
+# Import the correct Actions class dynamically
+Actions = __import__(ACTIONS_MODULE, fromlist=["Actions"]).Actions
 
 def load_pretrained_model(path):
     """Load a pretrained DQN model from the path provided as parameter"""
     # Get state and action size from environment
-    env = gym.make('gymnasium_env/CenturyGolem-v13')
+    env = gym.make(ENV_VERSION)
     env = FlattenObservation(env)
     state, _ = env.reset()
     state_size = len(state)
@@ -44,12 +78,12 @@ def display_valid_actions(info):
 
 if __name__ == '__main__':
     # Create environment
-    env = gym.make('gymnasium_env/CenturyGolem-v13', render_mode='text')
+    env = gym.make(ENV_VERSION, render_mode='text')
     env = FlattenObservation(env)
     state, info = env.reset()
     
     # Load the trained model
-    trained_agent = load_pretrained_model('dqn_v6_1/models/trained_model_4300.pt')  # Adjust path as needed
+    trained_agent = load_pretrained_model(MODEL_PATH)
     
     total_reward = 0
     max_timesteps = 2000

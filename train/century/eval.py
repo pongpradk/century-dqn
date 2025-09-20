@@ -3,10 +3,35 @@ import torch
 import numpy as np
 from typing import Tuple, Dict, Any, List
 from dataclasses import dataclass
-from dqn_v6_1.dqn_v6_1 import DQN
 from gymnasium.wrappers import FlattenObservation
 from random_agent import RandomAgent
-from gymnasium_env.envs.century_v13.enums import Actions
+
+# Configuration: Specify DQN version and model version here
+DQN_VERSION = "v8_1"
+MODEL_VERSION = "900"
+
+# Mapping of DQN versions to environment versions
+DQN_ENV_MAPPING = {
+    "v1": "gymnasium_env/CenturyGolem-v9",
+    "v3": "gymnasium_env/CenturyGolem-v10",
+    "v4": "gymnasium_env/CenturyGolem-v10",
+    "v6_1": "gymnasium_env/CenturyGolem-v13",
+    "v8_1": "gymnasium_env/CenturyGolem-v15",
+}
+
+# Dynamically set environment, DQN imports, and Actions import based on DQN version
+ENV_VERSION = DQN_ENV_MAPPING[DQN_VERSION]
+# DQN_MODULE = f"train.century.century_dqn_{DQN_VERSION}.dqn_{DQN_VERSION.replace('_', '')}"
+# MODEL_PATH = f"century_dqn_{DQN_VERSION}/models/trained_model_{MODEL_VERSION}.pt"
+DQN_MODULE = f"dqn_{DQN_VERSION}.dqn_{DQN_VERSION}"
+MODEL_PATH = f"dqn_{DQN_VERSION}/models/trained_model_{MODEL_VERSION}.pt"
+ACTIONS_MODULE = f"gymnasium_env.envs.century_{ENV_VERSION.split('-')[-1].lower()}.enums"
+
+# Import the correct DQN class dynamically
+DQN = __import__(DQN_MODULE, fromlist=["DQN"]).DQN
+
+# Import the correct Actions class dynamically
+Actions = __import__(ACTIONS_MODULE, fromlist=["Actions"]).Actions
 
 
 @dataclass
@@ -114,27 +139,24 @@ class GameStats:
         print("\n=======================\n")
 
 
-def load_pretrained_model(model_path: str) -> DQN:
+def load_pretrained_model() -> DQN:
     """
-    Load a pretrained DQN model from the specified path.
-    
-    Args:
-        model_path: Path to the pretrained model file
-        
+    Load a pretrained DQN model dynamically based on configuration.
+
     Returns:
         Loaded DQN model in evaluation mode
     """
     # Initialize environment to get state and action dimensions
-    env = gym.make('gymnasium_env/CenturyGolem-v13')
+    env = gym.make(ENV_VERSION)
     env = FlattenObservation(env)
     state, _ = env.reset()
     state_size = len(state)
     action_size = env.action_space.n
     env.close()
-    
+
     # Create and load the model
     model = DQN(state_size, action_size)
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(MODEL_PATH))
     model.eval()
     return model
 
@@ -322,11 +344,11 @@ def main(num_episodes: int = 1000, track_actions: bool = False, track_wins: bool
         track_sequences: Whether to track action sequences
     """
     # Create environment
-    env = gym.make('gymnasium_env/CenturyGolem-v13', render_mode=None)
+    env = gym.make(ENV_VERSION, render_mode=None)
     env = FlattenObservation(env)
     
     # Load the trained model and create opponent
-    trained_agent = load_pretrained_model('dqn_v6_1/models/trained_model_4400.pt')
+    trained_agent = load_pretrained_model()
     opponent = RandomAgent(env.action_space.n)
     
     # Run multiple episodes and get statistics
@@ -340,4 +362,4 @@ def main(num_episodes: int = 1000, track_actions: bool = False, track_wins: bool
 
 
 if __name__ == '__main__':
-    main(100, track_wins=True, track_actions=False, track_sequences=False)
+    main(100, track_wins=True, track_actions=True, track_sequences=False)

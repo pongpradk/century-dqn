@@ -520,7 +520,8 @@ class CenturyGolemEnv(gym.Env):
         return {
             "valid_actions": self._get_valid_actions(self.current_player),
             "current_player": int(self.current_player.player_id - 1),  # 0 for player1, 1 for player2
-            "winner": self.winner if self.winner is not None else None
+            "winner": self.winner if self.winner is not None else None,
+            "round_number": self.round_number
         }
     
     def reset(self, seed=None, options=None):
@@ -539,7 +540,8 @@ class CenturyGolemEnv(gym.Env):
         
         self.golem_market = random.sample(list(self.golem_deck.values()), 5)
         
-        self.current_player = random.choice([self.player1, self.player2])
+        # self.current_player = random.choice([self.player1, self.player2])
+        self.current_player = self.player1
         self.next_player = self.player1 if self.current_player == self.player2 else self.player2
         
         # Reset merchant card status - initialize all elements to proper defaults

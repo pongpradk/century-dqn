@@ -23,7 +23,7 @@ from torch.nn import functional as F
 
 import gymnasium_env
 from gymnasium.wrappers import FlattenObservation
-import sys; sys.path.append('..'); from strategic_agent import StrategicAgent
+import sys; sys.path.append('..'); from phase_agent import StrategicAgent
 
 
 class DQNConfig:

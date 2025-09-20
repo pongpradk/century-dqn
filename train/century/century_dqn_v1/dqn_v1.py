@@ -283,11 +283,8 @@ def train_dqn(config, num_episodes, checkpoint_path=None):
                 dqn_agent.save_checkpoint(ep + 1)
             
             # Save model every model_save_freq episodes
-            if (ep + 1) % config.model_save_freq == 0:
+            if ((ep + 1) % config.model_save_freq == 0) or (ep == 0):
                 dqn_agent.save_model(ep + 1)
-            
-            with open("rewards_log.pkl", "wb") as f:
-                pickle.dump(rewards, f)
     
     except KeyboardInterrupt:
         print("\nTraining interrupted manually.")
@@ -315,7 +312,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     config_dict = {
-        'episodes': args.episodes if args.episodes is not None else 3000,
+        'episodes': args.episodes if args.episodes is not None else 2000,
         'checkpoint': args.checkpoint if args.checkpoint is not None else None,
         'checkpoint_freq': args.checkpoint_freq if args.checkpoint_freq is not None else 250,
         'model_save_freq': args.model_save_freq if args.model_save_freq is not None else 100,

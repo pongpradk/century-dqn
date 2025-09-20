@@ -5,7 +5,7 @@ GAME_CONSTANTS = {
         'yellow': 0.3,
         'green': 1.0,
         'blue': 2.5,
-        'pink': 0.0
+        'pink': 4.0
     },
     'REWARDS': {
         'WIN': 50,

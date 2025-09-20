@@ -10,12 +10,22 @@ import os
 import importlib
 
 # Configuration: Specify DQN version and model version here
-DQN_VERSION = "v7"
-MODEL_VERSION = "200"
+DQN_VERSION = "v9_2"
+MODEL_VERSION = "100"
+
+# Add a flag to control win rate calculation
+auto_calculate_winrate = True
 
 # === Additional configuration for action distribution plotting ===
-plot_action_distribution = True
+plot_action_distribution = False
 episodes_for_action_count = 100
+# Configuration variable for toggling bar chart orientation
+horizontal_bar_chart = True  # Set to False for vertical bar chart
+
+# Configuration for round counting
+calculate_rounds = False  # Toggle for round counting feature
+games_for_round_count = 1000  # Number of games to calculate average rounds
+
 overwrite_action_count = True
 action_count_dir = "action_count"
 
@@ -28,6 +38,16 @@ DQN_ENV_MAPPING = {
     "v6_1": "gymnasium_env/CenturyGolem-v13",
     "v6_2": "gymnasium_env/CenturyGolem-v14",
     "v7": "gymnasium_env/CenturyGolem-v14",
+    "v7_1": "gymnasium_env/CenturyGolem-v14",
+    "v7_2": "gymnasium_env/CenturyGolem-v14",
+    "v7_2": "gymnasium_env/CenturyGolem-v14",
+    "v8": "gymnasium_env/CenturyGolem-v15",
+    "v8_1": "gymnasium_env/CenturyGolem-v15",
+    "v8_2": "gymnasium_env/CenturyGolem-v15",
+    "v9": "gymnasium_env/CenturyGolem-v16",
+    "v9_1": "gymnasium_env/CenturyGolem-v16",
+    "v9_1_1": "gymnasium_env/CenturyGolem-v16",
+    "v9_2": "gymnasium_env/CenturyGolem-v16",
 }
 
 # Dynamically set environment, DQN imports, and Actions import based on DQN version
@@ -51,9 +71,6 @@ episodes_per_eval = 100 # number of games
 model_filename_format = "trained_model_{}.pt"
 overwrite_existing = False
 results_file = f"winrate_log_{DQN_VERSION}.json"
-
-# Add a flag to control win rate calculation
-auto_calculate_winrate = True
 
 # === Utility to dynamically import DQN class ===
 def import_dqn_class(dqn_import_path):
@@ -87,12 +104,15 @@ def evaluate_model(model, env, opponent, num_episodes):
             return int(np.argmax(masked_q_values))
 
     wins = 0
+    total_rounds = 0
     for _ in range(num_episodes):
         state, info = env.reset()
         done = False
         total_reward = 0
+        rounds = 0
 
         for _ in range(2000):  # safety limit on steps
+            rounds += 1
             if info['current_player'] == 0:
                 action = select_action(state, model, info)
                 next_state, reward, done, _, info = env.step(action)
@@ -113,8 +133,9 @@ def evaluate_model(model, env, opponent, num_episodes):
 
         if info.get('winner') == 'P1':
             wins += 1
+        total_rounds += rounds
 
-    return wins / num_episodes
+    return wins / num_episodes, total_rounds / num_episodes
 
 # === Main Evaluation Loop ===
 def main():
@@ -148,7 +169,7 @@ def main():
 
     for episode in available_models:
         if not overwrite_existing and str(episode) in results:
-            print(f"Skipping episode {episode}, result already exists.")
+            # print(f"Skipping episode {episode}, result already exists.")
             continue
 
         model_path = os.path.join(model_dir, model_filename_format.format(episode))
@@ -157,9 +178,11 @@ def main():
             continue
 
         model = load_model(model_path, state_size, action_size, DQN)
-        win_rate = evaluate_model(model, env, opponent, episodes_per_eval)
+        win_rate, avg_rounds = evaluate_model(model, env, opponent, episodes_per_eval)
 
         print(f"Episode {episode}: Win rate = {win_rate:.2%}")
+        if calculate_rounds:
+            print(f"Average rounds per game = {avg_rounds:.2f}")
         results[str(episode)] = win_rate
 
         # Save results after each evaluation
@@ -183,8 +206,14 @@ def main():
         plt.grid(True)
         plt.legend()
         plt.tight_layout()
-        plt.savefig("winrate_vs_training.png")
+        plt.savefig(f"dqn_{DQN_VERSION}/results/dqn_{DQN_VERSION}_wr.png")
         plt.show()
+
+    # Calculate and display average rounds if enabled
+    if calculate_rounds:
+        model = load_model(MODEL_PATH, state_size, action_size, DQN)
+        _, avg_rounds = evaluate_model(model, env, opponent, games_for_round_count)
+        print(f"\nAverage rounds per game over {games_for_round_count} games: {avg_rounds:.2f}")
 
 if __name__ == "__main__":
     main()
@@ -243,29 +272,64 @@ if plot_action_distribution:
         with open(action_data_path, "w") as f:
             json.dump(avg_action_counts.tolist(), f, indent=4)
 
-    custom_order = [0] + list(range(9, 24)) + list(range(1, 9))
+    # custom_order = [0] + list(range(9, 24)) + list(range(1, 9))
+    # custom_order = [0] + list(range(24, 63)) + list(range(1, 24))
+    custom_order = [0] + list(range(44, 125)) + list(range(1, 44))
     action_labels = [Actions(i).name for i in custom_order]
     avg_action_counts = avg_action_counts[custom_order]
 
     bar_colors = []
+    # for i in custom_order:
+    #     if i == 0:
+    #         bar_colors.append("tab:blue")
+    #     elif 9 <= i <= 18:
+    #         bar_colors.append("tab:orange")
+    #     elif 19 <= i <= 23:
+    #         bar_colors.append("tab:green")
+    #     elif 1 <= i <= 8:
+    #         bar_colors.append("tab:red")
+    #     else:
+    #         bar_colors.append("gray")
+
+    # for i in custom_order:
+    #     if i == 0:
+    #         bar_colors.append("tab:blue")
+    #     elif 24 <= i <= 48:
+    #         bar_colors.append("tab:orange")
+    #     elif 49 <= i <= 62:
+    #         bar_colors.append("tab:green")
+    #     elif 1 <= i <= 23:
+    #         bar_colors.append("tab:red")
+    #     else:
+    #         bar_colors.append("gray")
+
     for i in custom_order:
         if i == 0:
             bar_colors.append("tab:blue")
-        elif 9 <= i <= 18:
+        elif 44 <= i <= 88:
             bar_colors.append("tab:orange")
-        elif 19 <= i <= 23:
+        elif 89 <= i <= 124:
             bar_colors.append("tab:green")
-        elif 1 <= i <= 8:
+        elif 1 <= i <= 43:
             bar_colors.append("tab:red")
         else:
             bar_colors.append("gray")
 
-    plt.figure(figsize=(12, 6))
-    plt.bar(action_labels, avg_action_counts, color=bar_colors)
-    plt.ylabel("Average Count per Game", fontsize=16)
-    plt.xlabel("Action", fontsize=16)
-    plt.xticks(rotation=45, fontsize=14)
-    plt.yticks(fontsize=14)
+    # plt.figure(figsize=(12, 6))
+    # plt.figure(figsize=(18, 6))
+    plt.figure(figsize=(6, 30))
+    if horizontal_bar_chart:
+        plt.barh(action_labels, avg_action_counts, color=bar_colors)
+        plt.xlabel("Average Count per Game", fontsize=18)
+        plt.ylabel("Action", fontsize=18)
+        plt.yticks(fontsize=16)
+        plt.xticks(fontsize=16)
+    else:
+        plt.bar(action_labels, avg_action_counts, color=bar_colors)
+        plt.ylabel("Average Count per Game", fontsize=18)
+        plt.xlabel("Action", fontsize=18)
+        plt.xticks(rotation=70, fontsize=16)
+        plt.yticks(fontsize=16)
     # plt.title(f"Action Distribution (Model {MODEL_VERSION}, {episodes_for_action_count} games)", fontsize=16)
     plt.tight_layout()
     plt.savefig(f"dqn_{DQN_VERSION}_ep{MODEL_VERSION}_ad.png")

@@ -213,12 +213,38 @@ class CenturyGolemEnv(gym.Env):
             elif card.card_type == "upgrade":
                 reward = self._handle_upgrade_card(card, card_index)
         
-        # If the player has a balanced mix of crystals and is managing their inventory well
-        total_crystals = self.current_player.caravan["yellow"] + self.current_player.caravan["green"] + self.current_player.caravan["blue"] + self.current_player.caravan["pink"]
-        if (self.current_player.caravan["yellow"] > 0 and 
-            self.current_player.caravan["green"] > 0 and
-            total_crystals >= 5 and total_crystals <= GAME_CONSTANTS['MAX_CRYSTALS']):
-            return reward + GAME_CONSTANTS['REWARDS']['CRYSTAL_MANAGEMENT']
+        # Strategic crystal management reward
+        caravan = self.current_player.caravan
+        total_crystals = sum(caravan.values())
+        
+        # Reward for having a balanced mix of crystal types suitable for claiming golems
+        crystal_diversity = sum(1 for amount in caravan.values() if amount > 0)
+        
+        # Identify if we have a combination that's close to a golem in the market
+        potential_golem_match = False
+        for golem in self.golem_market:
+            # Count how many crystal types we have that match the golem's requirements
+            matching_types = sum(1 for crystal, amount in golem.cost.items() 
+                                if crystal in caravan and caravan[crystal] > 0)
+            # If we have at least 3 of the required crystal types 
+            # and total crystals is not too far from what's needed
+            total_needed = sum(golem.cost.values())
+            if matching_types >= min(3, len(golem.cost)) and total_crystals >= total_needed * 0.7:
+                potential_golem_match = True
+                break
+                
+        # Calculate final strategic reward
+        if crystal_diversity >= 3 and total_crystals <= GAME_CONSTANTS['MAX_CRYSTALS'] - 2:
+            # Good diversity with room to add more
+            reward += GAME_CONSTANTS['REWARDS']['CRYSTAL_MANAGEMENT'] * 0.5
+        
+        if potential_golem_match:
+            # Extra reward for having crystals that match market golems
+            reward += GAME_CONSTANTS['REWARDS']['CRYSTAL_MANAGEMENT']
+        
+        # Penalty for being close to crystal limit without diversity
+        if total_crystals > GAME_CONSTANTS['MAX_CRYSTALS'] - 2 and crystal_diversity < 3:
+            reward -= GAME_CONSTANTS['REWARDS']['CRYSTAL_MANAGEMENT'] * 0.5
             
         return reward
     
